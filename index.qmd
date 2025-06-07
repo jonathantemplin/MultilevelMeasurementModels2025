@@ -1,0 +1,41 @@
+---
+title: "Multilevel Measurement Models Workshop (Summer 2025; SMiP Summer School)"
+---
+
+# Multilevel Measurement Models Workshop, Summer 2025 (Universität Mannheim)
+
+## Instructors: [Lesa Hoffman](https://lesahoffman.com) and [Jonathan Templin](https://jonathantemplin.com)
+
+This repository contains the materials for the Multilevel Measurement Models Workshop 2025, held 30 June - 4 July, 2025 at the Universität Mannheim. This workshop was held in the Research Training Group "Statistical Modeling in Psychology", funded by the [https://www.dfg.de/en](German%20Research%20Foundation%20(DFG)). It is organized by the DFG funded Research Training Group on [https://www.uni-mannheim.de/smip/](“Statistical%20Modeling%20in%20Psychology”%20(SMiP)) in collaboration with the [https://www.iops.nl/](Interuniversity%20Graduate%20School%20of%20Psychometrics%20and%20Sociometrics%20(IOPS)). Details about the event can be found at <https://www.uni-mannheim.de/smip-summerschool/>.
+
+Workshop videos are available via YouTube with a link forthcoming after the first session of the workshop, on 01 July, 2025.
+
+### Repository Information
+
+The folder structure of the repository is set to correspond with the analysis files found in the root folder. All other paths for necessary files are relative.
+
+Please note, Stan output files (the empty model folder) are not included in the repository. These files will be created when the models are run.
+
+## Workshop Description
+
+This workshop will focus on the use of latent variable measurement models in multilevel sampling designs (e.g., persons within clusters, occasions within persons, stimuli crossed with persons). Course time will be allocated to traditional lectures, guided practice building models, and opportunities for individual data analysis (or further independent practice through instructor-provided data analysis activities). Day 1 will focus on latent variable measurement models for normal, binary, and ordinal responses (all in slope–intercept form) and introduce Stan for MCMC estimation. Day 2 will present concepts of multilevel models using observed outcomes and transition into three-level models for item responses nested in persons nested in clusters. Day 3 will extend multilevel models to include latent variable measurement models with level-specific discrimination parameters. Finally, Day 4 will make connections to models in which item parameters are treated as random effects instead of fixed effects (i.e., for predicting sources of item difficulty and discrimination, as in explanatory item response models). All instructional sessions will be recorded for future use by both participants and the general public.
+
+Prerequisite knowledge and skills include: (1) familiarity with R software for data analysis, (2) some familiarity with Markov Chain Monte Carlo (MCMC) estimation (i.e., have estimated models with MCMC before), (3) some prior knowledge of latent variable measurement models (i.e., confirmatory factor analysis for continuous responses; item response theory for binary and ordinal responses), and (4) some prior knowledge of multilevel models (i.e., hierarchical linear models, mixed-effects models). The course will use Stan software as run through R (using CMDStanR), but no prior experience with Stan is assumed. Participants who wish to use their own devices during the workshop should install Stan ahead of time. No readings will be required ahead of time.
+
+# Workshop Lecture and Syntax Files
+
++-----------------+-------------------------------------------------------------------------------------------------------------+
+| Lecture         | Lecture Files                                                                                               |
++=================+=============================================================================================================+
+| 01 Introduction | -   Slides                                                                                                  |
+|                 |                                                                                                             |
+|                 | -   [GitHub Folder](https://github.com/jonathantemplin/MLMM2025/tree/main/_lectures/lecture01_Introduction) |
+|                 |                                                                                                             |
+|                 | -   Slides Quarto File                                                                                      |
+|                 |                                                                                                             |
+|                 | -   Data File                                                                                               |
++-----------------+-------------------------------------------------------------------------------------------------------------+
+|                 |                                                                                                             |
++-----------------+-------------------------------------------------------------------------------------------------------------+
+|                 |                                                                                                             |
++-----------------+-------------------------------------------------------------------------------------------------------------+

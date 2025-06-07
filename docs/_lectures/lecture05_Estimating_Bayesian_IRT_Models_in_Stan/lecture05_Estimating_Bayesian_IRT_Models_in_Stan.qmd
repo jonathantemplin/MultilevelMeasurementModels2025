@@ -1,0 +1,880 @@
+---
+title: "Estimating Bayesian IRT Models in Stan"
+author: "SMIP Summer School 2025: Lecture 05" 
+format: 
+  revealjs:
+    multiplex: true
+    footer: "SMIP Summer School 2025, Multilevel Measurement Models, Lecture 05"
+    theme: ["pp.scss"]
+    slide-number: c/t
+    incremental: false
+editor: source
+--- 
+
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+
+
+## Section Objectives
+
+1. Show how to estimate unidimensional latent variable models with dichotomous data
+  * Also known as Item Repsonse Theory (IRT) or Item Factor Analysis (IFA) models
+2. Show how to estimate different parameterizations of IRT/IFA models
+3. Describe how to obtain IRT/IFA auxiliary statistics from Markov Chains
+4. Show variations of various dichotomous-data models
+
+
+## {auto-animate=true, visibility="uncounted"}
+
+::: {style="margin-top: 200px; font-size: 3em; color: red;"}
+Dichotomous Data Distribution: Bernoulli
+:::
+
+
+
+## The Bernoulli Distribution
+
+The Bernoulli distribution is a one-trial version of the Binomial distribution
+
+* Sample space (support) $Y \in \{0, 1\}$
+
+The probability mass function (pdf):
+
+$$P(Y = y) = \pi^y\left(1-\pi\right)^{(1-y)}$$
+
+The distribution has only one parameter: $\pi$ (the probability $Y=1$)
+
+* Mean of the distribution: $E(Y) = \pi$
+* Variance of the distribution: $Var(Y) = \pi \left(1- \pi \right)$
+
+
+
+## Definition: Dichotomous vs. Binary
+
+Note the definitions of some of the words for data with two values:
+
+* Dichotomous: Taking two values (without numbers attached)
+* Binary: either zero or one (specifically: $\{0,1 \}$)
+
+Therefore:
+
+* Not all dichotomous variables are binary (i.e., $\{2, 7\}$ is a dichotomous variable)
+* All binary variables are dichotomous
+
+Finally: 
+
+* Bernoulli distributions are for binary variables
+* Most dichotomous variables can be recoded as binary variables without loss of model effects
+
+
+
+## Models with Bernoulli Distributions
+
+Generalized linear models using Bernoulli distributions put a linear model onto a transformation of the mean
+
+* Link functions map the mean $E(Y)$ from its original range of $[0,1]$ to $(-\infty, \infty)$
+
+For an unconditional (empty) model, this is shown here:
+
+$$f\left( E \left(Y \right) \right) = f(\pi)$$
+
+
+
+## Link Functions for Bernoulli Distributions
+
+Common choices for the link function (in latent variable models): 
+
+* Logit (or log odds):
+$$f\left( \pi \right) = \log \left( \frac{\pi}{1-\pi} \right)$$
+
+* Probit:
+$$f\left( \pi \right) = \Phi^{-1} \left( \pi \right) $$
+
+Where Phi is the inverse cumulative distribution of a standard normal distribution: 
+
+$$\Phi(Z) = \int_{-\infty}^Z \frac{1}{\sqrt{2\pi}} \exp \left( \frac{-x^2}{2} \right) dx$$
+
+
+
+
+## Less Common Link Functions
+
+In the generalized linear models literature, there are a number of different link functions:
+
+* Log-log: $f\left( \pi \right) = -\log \left( -\log \left( \pi \right) \right)$
+* Complementary Log-Log: $f\left( \pi \right) = \log \left( -\log \left( 1- \pi \right) \right)$
+
+
+Most of these seldom appear in latent variable models
+
+* Each has a slightly different curve shape
+
+
+
+## Inverse Link Functions
+
+Our latent variable models will be defined on the scale of the link function
+
+* Sometimes we wish to convert back to the scale of the data
+  * Example: Test characteristic curves mapping $\theta_p$ onto an expected test score
+  
+For this, we need the inverse link function
+  
+* Logit (or log odds) link function:
+$$logit \left(\pi\right)  = \log \left( \frac{\pi}{1-\pi} \right)$$  
+  
+* Logit (or log odds) inverse link function:
+  
+$$\pi  = \frac{\exp \left(logit \left(\pi \right)\right)}{1+\exp \left(logit \left(\pi \right)\right)} = \frac{1}{1+\exp \left(-logit \left(\pi \right)\right)}  = \left( 1+\exp \left(-logit \left(\pi \right)\right)\right)^{-1}$$  
+
+
+
+
+## {auto-animate=true, visibility="uncounted"}
+
+::: {style="margin-top: 200px; font-size: 3em; color: red;"}
+Latent Variable Models with Bernoulli Distributions for Observed Variables
+:::
+
+
+
+## Latent Variable Models with Bernoulli Distributions for Observed Variables
+
+We define a latent variable model for binary responses using a Bernoulli distribution
+
+* To start, we will use the logit link function
+* We will begin with the linear predictor we had from the normal distribution models (Confirmatory factor analysis: $\mu_i +\lambda_i\theta_p$)
+
+## Latent Variable Models with Bernoulli Distributions for Observed Variables
+
+For an item $i$ and a person $p$, the model becomes:
+
+$$logit \left( P\left( Y_{pi}=1\right) \right) = \mu_i +\lambda_i\theta_p$$
+
+* Note: the mean $\pi_i$ is replaced by $P\left(Y_{pi} = 1 |\theta_p \right)$
+  * This is the mean of the observed variable, conditional on $\theta_p$
+* The item intercept is $\mu_i$: The expected logit when $\theta_p = 0$
+* The item discrimination is $\lambda_i$: The change in the logit for a one-unit increase in $\theta_p$
+  
+
+## Model Family Names
+
+Depending on your field, the model from the previous slide can be called:
+
+* The two-parameter logistic (2PL) model with slope/intercept parameterization
+* An item factor model
+
+## Model Family Names
+
+These names reflect the terms given to the model in diverging literatures:
+
+* 2PL: Educational measurement
+  * Birnbaum, A. (1968). Some Latent Trait Models and Their Use in Inferring an Examinee’s Ability. _In F. M. Lord & M. R. Novick (Eds.), Statistical Theories of Mental Test Scores_ (pp. 397-424). Reading, MA: Addison-Wesley.
+* Item factor analysis: Psychology
+  * Christofferson, A.(1975). Factor analysis of dichotomous variables. _Psychometrika_, 40, 5-22.
+
+Estimation methods are the largest difference between the two families
+
+
+
+## Differences from Normal Distributions
+
+Recall our normal distribution models:
+
+$$ 
+\begin{array}{cc}
+Y_{pi} = \mu_i + \lambda_i \theta_p  + e_{p,i}; & e_{p,i} \sim N\left(0, \psi_i^2 \right) \\ 
+\end{array}
+$$
+
+Compared to our Bernoulli distribution models:
+
+$$logit \left( P\left( Y_{pi}=1\right) \right) = \mu_i +\lambda_i\theta_p$$
+
+Differences:
+
+* No residual (unique) variance $\phi^2$ in Bernoulli distribution 
+  * Only one parameter in distribution; variance is a function of the mean
+* Identity link function in normal distribution: $f(E(Y_{pi}|\theta_p)) = E(Y_{pi}|\theta_p)$
+  * Model scale and data scale are the same
+* Logit link function in Bernoulli distribution
+  * Model scale is different from data scale
+
+
+
+## From Model Scale to Data Scale
+
+Commonly, the IRT or IFA model is shown on the data scale (using the inverse link function):
+
+$$P\left( Y_{pi}=1\right) = \frac{\exp \left(\mu_i +\lambda_i\theta_p \right)}{1+\exp \left(\mu_i +\lambda_i\theta_p \right)}$$
+
+The core of the model (the terms in the exponent on the right-hand side) is the same
+
+* Models are equivalent
+  * $P\left( Y_{pi}=1\right)$ is on the data scale
+  * $logit \left( P\left( Y_{pi}=1\right) \right)$ is on the model (link) scale
+
+
+
+
+## Modeling All Data
+
+$$
+\begin{array}{c}
+logit \left(Y_{p1} = 1 \right) = \mu_1 + \lambda_1 \theta_p  \\ 
+logit \left(Y_{p2} = 1 \right) = \mu_2 + \lambda_2 \theta_p  \\  
+logit \left(Y_{p3} = 1 \right) = \mu_3 + \lambda_3 \theta_p  \\  
+logit \left(Y_{p4} = 1 \right) = \mu_4 + \lambda_4 \theta_p  \\  
+logit \left(Y_{p5} = 1 \right) = \mu_5 + \lambda_5 \theta_p  \\  
+logit \left(Y_{p6} = 1 \right) = \mu_6 + \lambda_6 \theta_p  \\  
+logit \left(Y_{p7} = 1 \right) = \mu_7 + \lambda_7 \theta_p  \\  
+logit \left(Y_{p8} = 1 \right) = \mu_8 + \lambda_8 \theta_p  \\
+logit \left(Y_{p9} = 1 \right) = \mu_9 + \lambda_9 \theta_p  \\  
+logit \left(Y_{p10} = 1 \right) = \mu_{10} + \lambda_{10} \theta_p  \\
+\end{array}
+$$
+
+
+
+
+
+
+## Measurement Model Analysis Steps 
+
+1. Specify model
+2. Specify scale identification method for latent variables
+3. Estimate model
+4. Examine model-data fit
+5. Iterate between steps 1-4 until adequate fit is achieved
+
+#### Measurement Model Auxiliary Components
+
+6. Score estimation (and secondary analyses with scores)
+7. Item evaluation
+8. Scale construction
+9. Equating
+10. Measurement invariance/differential item functioning
+
+
+
+
+## Model Specification
+
+The set of equations on the previous slide formed step #1 of the Measurement Model Analysis Steps:
+
+1. Specify Model
+
+The next step is:
+
+2. Specify scale identification method for latent variables
+
+We will initially assume $\theta_p \sim N(0,1)$, which allows us to estimate all item parameters of the model
+
+* This is what we call a standardized latent variable 
+  * They are like Z-scores
+
+
+
+
+## Identification of Latent Traits, Part 1
+
+Psychometric models require two types of identification to be valid:
+
+1. Empirical Identification
+
+  * The minimum number of items that must measure each latent variable
+  * From CFA: three observed variables for each latent variable (or two if the latent variable is correlated with another latent variable)
+
+Bayesian priors can help to make models with fewer items than these criteria suggest estimable
+
+* The parameter estimates (item parameters and latent variable estimates) often have MCMC convergence issues and should not be trusted
+* Use the CFA standard in your work
+
+
+
+## Identification of Latent Traits, Part 2
+
+Psychometric models require two types of identification to be valid:
+
+2. Scale Identification (i.e., what the mean/variance is for each latent variable)
+
+  * The additional set of constraints needed to set the mean and standard deviation (variance) of the latent variables
+  * Two main methods to set the scale:
+    * Marker item parameters
+      * For variances: Set the loading/slope to one for one observed variable per latent variable
+        * Can estimate the latent variable's variance (the diagonal of $\boldsymbol{\Sigma}_\theta$)
+      * For means: Set the item intercept to one for one observed variable perlatent variable
+        * Can estimate the latent variable's mean (in $\boldsymbol{\mu}_\theta$)
+        
+
+## Identification of Latent Traits, Part 2
+
+2. Scale Identification (i.e., what the mean/variance is for each latent variable)
+  * Standardized factors
+    * Set the variance for all latent variables to one
+    * Set the mean for all latent variables to zero
+    * Estimate all unique off-diagonal correlations (covariances) in $\boldsymbol{\Sigma}_\theta$
+
+
+
+## More on Scale Identification
+
+Bayesian priors can let you believe you can estimate more parameters than the non-Bayesian standards suggest
+
+* For instance, all item parameters and the latent variable means/variances
+
+Like empirical identification, these estimates are often unstable and are not recommended
+
+* Standardized latent variables
+  * Used for scale development and/or when scores are of interest directly
+  
+* Marker item for latent variables and zero means
+  * Used for cases where latent variables may become outcomes (and that variance needs explained)
+
+#### Important Point: Regardless of model choice, model/data likelihoods are equivalent
+
+* Differing prior distributions may make models non-equivalent
+
+
+
+
+
+## Model (Data) Likelihood Functions
+
+The specification of the model defines the model (data) likelihood function for each type of parameter
+
+* To demonstrate, let's examine the data likelihood for the factor loading for the first item $\lambda_1$
+
+The model (data) likelihood function can be defined conditional on all other parameter values (as in a block in an MCMC iteration)
+
+* That is: hold $\mu_1$ and $\boldsymbol{\theta}$ constant
+
+The likelihood is then:
+
+$$f \left(Y_{p1} \mid \lambda_1 \right) = \prod_{p=1}^P \left( \pi_{p1} \right)^{Y_{p1}} \left(1- \pi_{p1} \right)^{1-Y_{p1}}$$
+
+
+## Model (Data) Log Likelihood Functions
+
+As this number can be very small (making numerical precision an issue), we often take the log:
+
+
+$$\log f \left(Y_{p1} \mid \lambda_1 \right) = \sum_{p=1}^P \log \left[ \left( \pi_{p1} \right)^{Y_{p1}} \left(1- \pi_{p1} \right)^{1-Y_{p1}}\right]$$
+
+
+## Model (Data) Log Likelihood Functions
+
+The key in the likelihood function is to substitute each person's data-scale model for $\pi_{p1}$:
+
+$$ \pi_{p1} = \frac{\exp \left(\mu_1 +\lambda_1\theta_p \right)}{1+\exp \left(\mu_1 +\lambda_1\theta_p \right)} $$
+
+Which then becomes:
+
+$$\log f \left(Y_{p1} \mid \lambda_1 \right) = \sum_{p=1}^P \log \left[ \left( \frac{\exp \left(\mu_1 +\lambda_1\theta_p \right)}{1+\exp \left(\mu_1 +\lambda_1\theta_p \right)} \right)^{Y_{p1}} \left(1- \frac{\exp \left(\mu_1 +\lambda_1\theta_p \right)}{1+\exp \left(\mu_1 +\lambda_1\theta_p \right)} \right)^{1-Y_{p1}}\right]$$
+
+
+
+## Model (Data) Log Likelihood Functions
+
+As an example for $\lambda_1$:
+
+```{r}
+
+load("modelingData.RData")
+
+mu1 = -2
+theta = rnorm(n = nrow(modelingData), mean = 0, sd = 1)
+
+lambda = seq(-2,2, .01)
+logLike = NULL
+
+param=1 # for demonstrating
+for (param in 1:length(lambda)){
+  
+  logit = mu1 + lambda[param]*theta
+  prob = exp(logit)/(1+exp(logit))
+  bernoulliLL = sum(dbinom(x = modelingData$score1, size = 1, prob = prob, log = TRUE))
+  
+  logLike = c(logLike, bernoulliLL)
+}
+
+plot(x = lambda, y = logLike, type = "l")
+
+```
+
+
+
+## Model (Data) Log Likelihood Functions for $\theta_p$
+
+For each person, the same model (data) likelihood function is used
+
+* Only now it varies across each item response
+* Example: Person 1
+
+
+$$f \left(Y_{1i} \mid \theta_1 \right) = \prod_{i=1}^I \left( \pi_{1i} \right)^{Y_{1i}} \left(1- \pi_{1i} \right)^{1-Y_{1i}}$$
+
+
+
+
+## Model (Data) Log Likelihood Functions
+
+As an example for the log-likelihood for $\theta_2$:
+
+```{r}
+
+responseData = modelingData[paste0("score",1:10)]
+
+person = 2
+
+# for theta2
+mu = runif(n = ncol(responseData), min = -2, max = 0)
+lambda = runif(n = ncol(responseData), min = 0, max = 2)
+
+
+theta = seq(-3,3,.01)
+logLike = NULL
+
+param=1 # for demonstrating
+for (param in 1:length(theta)){
+  thetaLL = 0
+  for (item in 1:ncol(responseData)){
+    logit = mu[item] + lambda[item]*theta[param]
+    prob = exp(logit)/(1+exp(logit))
+    thetaLL = thetaLL + dbinom(x = responseData[person,item], size = 1, prob = prob, log = TRUE)
+  }
+  
+  logLike = c(logLike, thetaLL)
+}
+
+plot(x = theta, y = logLike, type = "l")
+
+```
+
+
+
+
+## Model (Data) Log Likelihood Functions
+
+As an example for the log-likelihood for $\theta_1$: 
+
+```{r}
+
+person = 1
+
+# for theta2
+mu = runif(n = ncol(responseData), min = -2, max = 0)
+lambda = runif(n = ncol(responseData), min = 0, max = 2)
+
+
+
+theta = seq(-3,3,.01)
+logLike = NULL
+
+param=1 # for demonstrating
+for (param in 1:length(theta)){
+  thetaLL = 0
+  for (item in 1:ncol(responseData)){
+    logit = mu[item] + lambda[item]*theta[param]
+    prob = exp(logit)/(1+exp(logit))
+    thetaLL = thetaLL + dbinom(x = responseData[person,item], size = 1, prob = prob, log = TRUE)
+  }
+  
+  logLike = c(logLike, thetaLL)
+}
+
+plot(x = theta, y = logLike, type = "l")
+
+```
+
+
+
+
+## {auto-animate=true, visibility="uncounted"}
+
+::: {style="margin-top: 200px; font-size: 3em; color: red;"}
+Implementing Bernoulli Outcomes in Stan
+:::
+
+
+
+
+## Stan's ```model``` Block
+
+```{r, echo=TRUE, eval=FALSE}
+model {
+
+  lambda ~ multi_normal(priorMeanLambda, priorCovLambda); // Prior for item discrimination/factor loadings
+  mu ~ multi_normal(priorMeanMu, priorCovMu);             // Prior for item intercepts
+  
+  theta ~ normal(0, 1);                         // Prior for latent variable (with mean/sd specified)
+  
+  for (item in 1:nItems){
+    Y[item] ~ bernoulli_logit(mu[item] + lambda[item]*theta);
+  }
+  
+}
+
+```
+
+For logit models without lower/upper asymptote parameters, Stan has a convenient ```bernoulli_logit()``` function
+
+* Automatically has the link function embedded
+* The catch: The data have to be defined as an integer
+
+Also, note that there are few differences from the normal outcomes models (CFA)
+
+* No residual variance parameters
+
+
+
+## Stan's ```parameters``` Block
+
+```{r, echo=TRUE, eval=FALSE}
+parameters {
+  vector[nObs] theta;                // the latent variables (one for each person)
+  vector[nItems] mu;                 // the item intercepts (one for each item)
+  vector[nItems] lambda;             // the factor loadings/item discriminations (one for each item)
+}
+```
+
+
+## Stan's ```data {}``` Block
+
+```{r, eval=FALSE, echo=TRUE}
+data {
+  int<lower=0> nObs;                            // number of observations
+  int<lower=0> nItems;                          // number of items
+  array[nItems, nObs] int<lower=0, upper=1>  Y; // item responses in an array
+
+  vector[nItems] priorMeanMu;             // prior mean vector for intercept parameters
+  matrix[nItems, nItems] priorCovMu;      // prior covariance matrix for intercept parameters
+
+  vector[nItems] priorMeanLambda;         // prior mean vector for loading parameters
+  matrix[nItems, nItems] priorCovLambda;   // prior covariance matrix for loading parameters
+}
+```
+
+One difference from normal outcomes model---the data are defined as an ```array```:
+
+```{r, eval=FALSE, echo=TRUE}
+array[nItems, nObs] int<lower=0, upper=1>  Y;
+```
+
+* Arrays are types of matrices (with more than two dimensions possible)
+  * Allows for different types of data (here Y are integers)
+    * Integer-valued variables needed for ```bernoulli_logit()``` function
+* Arrays are row-major (meaning order of items and persons is switched)
+  
+
+
+## Change to Data List for Stan Import
+
+The switch of items and observations in the ```array``` statement means the data imported have to be transposed:
+
+```{r, echo=TRUE, eval=FALSE}
+  # build stan data file
+  model2PL_Data = list(
+    nObs = nrow(modelingData),
+    nItems = 10,
+    Y = t(correctResponseData),
+    priorMeanMu = rep(0, nItems),
+    priorCovMu = 10 * diag(nItems),
+    priorMeanLambda = rep(0, nItems),
+    priorCovLambda = 10 * diag(nItems)
+  )
+```
+
+  
+
+
+## Running the Model In Stan
+
+The Stan program takes longer to run than in linear models:
+
+* Note: Typically, longer chains are needed for larger models like this
+* Note: Starting values added (mean of 5 is due to logit function limits)
+  * Helps keep definition of parameters (stay away from opposite mode)
+  * Too large of value can lead to NaN values (exceeding numerical precision)
+
+See ```lecture05_unidimensionalBayesianIRT.R``` for syntax and results
+
+
+
+## Modeling vs. Didactic Strategy
+
+At this point, one should investigate model fit of the model we just ran
+
+* If the model does not fit, then all model parameters could be biased
+  * Both item parameters and person parameters ($\theta_p$)
+* Moreover, the uncertainty accompanying each parameter (the posterior standard deviation) may also be biased
+  * Especially bad for psychometric models as we quantify reliaiblity with these numbers
+
+<hr>
+But, to teach generalized measurement models, we will first talk about differing models for observed data
+
+* Different distributions
+* Different parameterizations across the different distributions
+
+
+
+## Investigating Item Parameters
+
+One plot that can help provide information about the item parameters is the item characteristic curve (ICC)
+
+* The ICC is the plot of the expected value of the response conditional on the value of the latent traits, for a range of latent trait values
+
+$$E \left(Y_{pi} \mid \theta_p \right) = \frac{\exp \left(\mu_{i} +\lambda_{i}\theta_p \right)}{1+\exp \left(\mu_{i} +\lambda_{i}\theta_p \right)}  $$
+
+* Because we have sampled values for each parameter, we can plot one ICC for each posterior draw
+
+
+
+
+## Posterior ICC Plots
+
+![](img/bayesICC.png)
+
+
+
+## Investigating the Item Parameters
+
+Trace plots for $\mu_i$
+
+![](img/bayesDensityMu.png)
+
+
+
+## Investigating the Item Parameters
+
+Density plots for $\mu_i$
+
+![](img/bayesDensityMu.png)
+
+
+
+
+## Investigating the Item Parameters
+
+Trace plots for $\lambda_i$
+
+![](img/bayesTraceLambda.png)
+
+
+
+## Investigating the Item Parameters
+
+Density plots for $\lambda_i$
+
+![](img/bayesDensityLambda.png)
+
+
+
+
+## Investigating the Item Parameters
+
+Bivariate plots for $\mu_i$ and $\lambda_i$
+
+![](img/bayesBivariate.png)
+
+
+
+
+## Investigating the Latent Variables
+
+The estimated latent variables are then:
+
+```{r, cache=TRUE}
+load("01_model02.RData")
+print(model2PL_Summary[grep(pattern = "theta", x=model2PL_Summary$variable),])
+```
+
+
+
+
+## EAP Estimates of Latent Variables
+
+```{r, cache=TRUE}
+hist(
+  model2PL_Summary$mean[grep(pattern = "theta", x=model2PL_Summary$variable)], main="EAP Estimates of Theta", xlab = expression(theta)
+)
+```
+
+
+
+## Comparing EAP Estimates with Posterior SDs
+
+```{r, cache=TRUE}
+plot(y = model2PL_Summary$sd[grep(pattern = "theta", x=model2PL_Summary$variable)], 
+     x = model2PL_Summary$mean[grep(pattern = "theta", x=model2PL_Summary$variable)],
+     xlab = "E(theta|Y)", ylab = "SD(theta|Y)", main="Mean vs SD of Theta")
+```
+
+
+
+## Comparing EAP Estimates with Sum Scores
+
+```{r, cache=TRUE}
+plot(y = modelingData$sumScore, x = model2PL_Summary$mean[grep(pattern = "theta", x=model2PL_Summary$variable)],
+     ylab = "Sum Score", xlab = expression(theta))
+```
+
+
+
+## Additional IRT Information
+
+There is a lot more to IRT models, but most is tangiential to our workshop
+
+* See Bayesian Psychometric Models my course notes at
+  * 2024 (with Stan): [https://jonathantemplin.com/bayesian-psychometric-modeling-fall-2024/](https://jonathantemplin.com/bayesian-psychometric-modeling-fall-2024/)
+  * 2019 (with JAGS):[https://jonathantemplin.com/bayesian-psychometric-modeling-spring-2019/](https://jonathantemplin.com/bayesian-psychometric-modeling-spring-2019/)
+
+# Posterior Predictive Model Checking for Absolute Fit in Bayesian Psychometric Models
+
+
+## Bayesian Psychometric Model Fit Methods
+
+Objectives:
+
+1. Show how to use PPMC to evaluate absolute model fit in Bayesian psychometric models
+2. Show how to use LOO and WAIC for relative model fit in Bayesian psychometric models
+
+
+
+
+
+## Psychometric Model PPMC
+
+Psychometric models can use posterior predictive model checking (PPMC) to assess how well they fit the data in an absolute sense
+
+* At each iteration of the chain, each item is simulated using model parameter values from that iteration
+* Summary statistics are used to evaluate model fit
+
+## Psychometric Model PPMC
+
+Types of statistics:
+
+  * Univariate measures (each item, separately): 
+    * Item mean
+    * Item $\chi^2$ (comparing observed data with each simulated data set)
+  * Not very useful unless:
+    * Parameters have "obscenely" informative priors
+    * There are cross-item constraints on some parameters (such as all loadings are equal)
+  * Bivariate measures (each pair of items)
+    * For binary data: Tetrachoric correlations
+    * For polytomous data: Polychoric correlations (but difficult to estimate with small samples), pearson correlations
+    * For other types of data: Pearson correlations
+    
+
+
+## Problems with PPMC
+
+Problems with PPMC include
+
+* No uniform standard for which statistics to use
+  * Tetrachoric correlations? Pearson correlations?
+* No uniform standard by which data should fit, absolutely
+  * Jihong Zhang has some work on this topic, though:
+    * Paper in [*Structural Equation Modeling*](https://www.tandfonline.com/doi/abs/10.1080/10705511.2021.2012682)
+    * Dissertation on PPMC with M2 statistics (working on publishing)
+* No way to determine if a model is overparameterized (too complicated)
+  * Fit only improves to a limit
+
+
+
+## Implementing PPMC in Stan (one $\theta$)
+
+```{r, eval=FALSE, echo=TRUE}
+generated quantities{
+
+  // for PPMC:
+  array[nItems, nObs] int<lower=0> simY;
+  
+  for (item in 1:nItems){
+    for (obs in 1:nObs){
+      // generate data based on distribution and model
+      simY[item, obs] = bernoulli_logit_rng(mu[item] + lambda[item]*theta[obs]);
+      
+    }
+  }
+}
+
+```
+
+Notes:
+
+* Generated quantities block is where to implement PPMC
+* Each type of distribution also has a random number generator
+  * Here, ```bernoulli_logit_rng``` goes with ```bernoulli_logit```
+* Each may have some issue in types of inputs (had to go person-by-person in this block)
+* Rather than have Stan calculate statistics, I will do so in R
+
+
+
+## PPMC Processing
+
+Stan generated a lot of data---but now we must take it from the format of Stan and process it:
+
+* For this, we refer to the file ```lecture05_unidimensionalBayesianIRT.R```
+* Each IRT (or ML IRT) model has a section for PPMC
+* "Helper" function at top of syntax to calculate tetrachoric correlation between items
+
+
+
+# Relative Model Fit in Bayesian Psychometric Models
+
+
+
+## Relative Model Fit in Bayesian Psychometric Models
+
+As with other Bayesian models, we can use WAIC and LOO to compare the model fit of two Bayesian models
+
+* Of note: There is some debate as to whether or not we should marginalize across the latent variables
+  * We won't do that here as that would involve a numeric integral
+  
+* What is needed: The conditional log likelihood for each observation at each step of the chain
+  * Here, we have to sum the log likelihood across all items
+  * There are built-in functions in Stan to do this
+
+* Each IRT (or ML IRT) model has a section for LOO/WAIC
+
+
+
+## Implementing ELPD in Stan (one $\theta$)
+
+```{r, eval=FALSE, echo=TRUE}
+generated quantities{
+  
+  // for LOO/WAIC:
+  vector[nObs] personLike = rep_vector(0.0, nObs);
+  
+  for (item in 1:nItems){
+    for (obs in 1:nObs){
+      // calculate conditional data likelihood for LOO/WAIC
+      personLike[obs] = 
+        personLike[obs] + 
+        bernoulli_logit_lpmf(Y[item, obs] | mu[item] + lambda[item]*theta);
+    }
+  }
+}
+
+```
+
+
+Notes: 
+
+* ```bernoulli_logit_lpmf``` needs the observed data to work (first argument)
+* ```vector[nObs] personLike = rep_vector(0.0, nObs);``` is needed to set the values to zero at each iteration prior to summing
+
+
+
+## Section Summary
+
+Model fit is complicated for psychometric models
+
+* Bayesian model fit methods are even more complicated than non-Bayesian methods
+* Open area for research!
+

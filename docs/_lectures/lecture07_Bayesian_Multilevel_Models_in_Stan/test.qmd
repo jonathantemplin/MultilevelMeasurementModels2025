@@ -1,0 +1,609 @@
+title: "Multilevel Modeling with Bayesian Estimation"author: "Lesa Hoffman and Jonathan Templin (Bayesian Adaptation)"format:docx:reference-doc: custom-reference-doc.docxeditor: sourceheader-includes:\usepackage{amsthm}\newtheorem{proposition}{Proposition}knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+Multilevel Modeling: Predicting Sum Score using Bayesian EstimationThis handout demonstrates the concepts and estimation of multilevel models using Bayesian methods with Stan. We will predict the sum score of 10 example items using binary free/reduced lunch status for level-1 students nested in level-2 schools. The analyses parallel those conducted using Maximum Likelihood, allowing for a comparison of methods and interpretations.Preliminary StepsFirst, we set global R options, then install and load the necessary packages. We use cmdstanr as the interface to Stan. We also define a helper function to compute unit means. Note that the R script includes a runStan flag, which is set to TRUE to execute the analyses. If set to FALSE, it would load pre-saved results.# Set width of output, significant digits, and number of cores for parallel chains
+options(width=120, digits=8, scipen=9, show.signif.stars=FALSE, mc.cores = 4)
+
+# This flag controls whether to run the Stan models or load saved results.
+# For this handout, we assume it's TRUE.
+runStan = TRUE 
+
+# Custom function to create school-level means
+addUnitMeans = function(data, unitVariable, meanVariables, newNames){
+  unitMeans = t(sapply(
+    X = unique(data[,unitVariable]),
+    FUN = function(x, data) {
+      return(c(
+        x,
+        length(which(data[,unitVariable] == x)),
+        apply(
+          X = as.data.frame(data[which(data[,unitVariable] == x), meanVariables]), 
+          MARGIN = 2, 
+          FUN = mean, 
+          rm.na=TRUE
+          )
+        )
+      )
+    },data = data
+  ))
+  unitMeans = data.frame(unitMeans)
+  names(unitMeans) = c(unitVariable, paste0("Nper", unitVariable), newNames)
+  newData = merge(x = data, y = unitMeans, by = unitVariable)
+  return(newData)
+}
+
+# Install and load necessary packages
+needed_packages = c("psych", "ggplot2", "HDInterval", "bayesplot", "loo")
+for (i in 1:length(needed_packages)){
+  if (!require(needed_packages[i], character.only = TRUE)) {
+    install.packages(needed_packages[i])
+  }
+  library(needed_packages[i], character.only = TRUE)
+}
+
+# Installing and loading cmdstanr for interfacing with Stan
+if (!require(cmdstanr)){
+  install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+  cmdstanr::install_cmdstan()
+  library(cmdstanr)
+}
+Data Import, Manipulation, and DescriptionNext, we import the data, create school-level means for the sum score and free/reduced lunch variables, and examine descriptive statistics.# Load example data
+load("modelingData.RData")
+
+# Create school means for sum score and frlunch
+modelingData = addUnitMeans(data = modelingData, unitVariable = "schoolID", 
+                            meanVariables = c("sumScore", "frlunch"), 
+                            newNames = c("SMsumScore", "SMfrlunch"))
+
+# Descriptive statistics for student variables and new school means
+print(
+  describe(
+    modelingData[c("sumScore", "frlunch", "SMsumScore", "SMfrlunch")]
+    ),
+  digits = 3
+)
+The descriptive statistics show considerable variability at the school level. The average school mean sum score (SMsumScore) is 5.3, but scores range from 3.08 to 7.58. The proportion of students receiving free/reduced lunch (SMfrlunch) ranges from 0% to 80% across schools. This between-school variance is what we aim to model.We then center our predictors to make the intercept interpretable and to properly partition variance. School mean lunch is centered at 0.30 (near the sample mean), and student lunch status is cluster-mean-centered.# Constant-center school lunch near sample mean
+modelingData$SMfrlunch30 = modelingData$SMfrlunch - .30
+
+# Cluster-mean-center student lunch at school mean
+modelingData$WSfrlunch = modelingData$frlunch - modelingData$SMfrlunch
+
+# Stan requires integer IDs starting from 1. We create a new school ID for this.
+schoolIDs = unique(modelingData$schoolID)
+nSchools = length(schoolIDs)
+schoolIDtable = data.frame(schoolID = schoolIDs, stanSchoolID = 1:nSchools)
+modelingData = merge(x = modelingData, y = schoolIDtable, by = "schoolID")
+Models for Partitioning VariancePartitioning Sum Score Variance: Single-Level ModelWe begin with an "empty" single-level model that ignores the nested structure of the data. This serves as a baseline.sumScorep​=γ00​+ep​The model is estimated in Stan. The Stan code below defines the data inputs, parameters, their priors, and the likelihood.data {
+  int<lower=0> N;         // total number of observations
+  int<lower=0> P;         // number of predictors (plus column for intercept)
+  matrix[N, P] X;         // model.matrix() from R 
+  vector[N] y;            // outcome
+  vector[P] priorMeanBeta;     // prior mean vector for coefficients
+  matrix[P, P] priorCovBeta;   // prior covariance matrix for coefficients
+  real priorSigmaMean;         // prior rate parameter for residual standard deviation
+  real priorSigmaSD;           // prior shape parameter for residual standard deviation
+}
+
+parameters {
+  vector[P] beta;         // vector of coefficients for beta
+  real<lower=0> sigma;    // residual standard deviation
+}
+
+model {
+  beta ~ multi_normal(priorMeanBeta, priorCovBeta); // prior for coefficients
+  sigma ~ lognormal(priorSigmaMean, priorSigmaSD);         // prior for sigma
+  y ~ normal(X*beta, sigma);              // linear model predicting single outcome
+}
+
+generated quantities {
+  // This block calculates the log-likelihood for each observation, used for LOO model comparison
+  vector[N] personLike = rep_vector(0.0, N);
+  for (i in 1:N) {
+    personLike[i] = normal_lpdf(y[i] | X[i]*beta, sigma);
+  }
+}
+This R code prepares the data and runs the Stan model. We use wide, non-informative priors.if (runStan){
+  modelEmptyGLM_Stan = cmdstan_model(stan_file = "lecture07_model01.stan.txt")
+  modelEmptyGLM_Formula = formula(sumScore ~ 1, data = modelingData)
+  modelEmptyGLM_modelMatrix = model.matrix(modelEmptyGLM_Formula, data = modelingData)
+
+  modelEmptyGLM_Data = list(
+      X = modelEmptyGLM_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelEmptyGLM_modelMatrix), P = ncol(modelEmptyGLM_modelMatrix), 
+      priorMeanBeta = rep(0, ncol(modelEmptyGLM_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelEmptyGLM_modelMatrix), ncol = ncol(modelEmptyGLM_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100)
+
+  modelEmptyGLM_Samples = modelEmptyGLM_Stan$sample(
+      data = modelEmptyGLM_Data, seed = 0608202301, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+  
+  modelEmptyGLM_Summary = modelEmptyGLM_Samples$summary()
+  modelEmptyGLM_Loo = modelEmptyGLM_Samples$loo(variables = "personLike")  
+}
+The posterior summary shows the results. beta[1] is the intercept (grand mean), and sigma is the standard deviation of the residuals. The R-hat values are all near 1.0, indicating the model's MCMC chains have converged. The results closely match the ML estimates and the data's descriptive statistics.print(modelEmptyGLM_Summary[grep(pattern = "beta|sigma", x = modelEmptyGLM_Summary$variable),], n = Inf)
+Partitioning Sum Score Variance: Two-Level Random Intercept ModelNow we add a random intercept for schools, U0c​, to partition the variance into within-school (level 1) and between-school (level 2) components.sumScorepc​β0c​​==​β0c​+epc​γ00​+U0c​​The Stan code is updated to include parameters for the random intercepts (randomIntercept) and their standard deviation across schools (tauIntercept).data {
+  int<lower=0> N;           // total number of observations
+  int<lower=0> nSchools;       // number of unique level-2 units in data
+  array[N] int obsSchoolID;    // the level-2 ID corresponding to each row of the data
+  int<lower=0> P;           // number of predictors (plus column for intercept)
+  matrix[N, P] X;           // model.matrix() from R 
+  vector[N] y;              // outcome
+  vector[P] priorMeanBeta;       // prior mean vector for coefficients
+  matrix[P, P] priorCovBeta;     // prior covariance matrix for coefficients
+  real priorSigmaMean;         // prior mean parameter for residual standard deviation
+  real priorSigmaSD;           // prior sd parameter for residual standard deviation
+  real priorTauMean;                // prior mean parameter for random intercept standard deviation
+  real priorTauSD;                  // prior sd parameter for random intercept standard deviation
+  int<lower=0> nContrasts;         // number of contrasts to estimate
+  matrix[nContrasts,P] contrastMatrix;   // contrast matrix for additional effects
+}
+
+parameters {
+  vector[P] beta;                    // vector of coefficients for beta
+  real<lower=0> sigma;               // residual standard deviation
+  vector[nSchools] randomIntercept;     // random intercept for each level-2 unit
+  real<lower=0> tauIntercept;           // random intercept for each level-2 unit
+}
+
+model {
+  beta ~ multi_normal(priorMeanBeta, priorCovBeta);        // prior for coefficients
+  sigma ~ lognormal(priorSigmaMean, priorSigmaSD);         // prior for sigma
+  tauIntercept ~ lognormal(priorTauMean, priorTauSD);      // prior for tau
+
+  for (school in 1:nSchools){
+    randomIntercept[school] ~ normal(0, tauIntercept);
+  }
+
+  for (obs in 1:N){
+    y[obs] ~ normal(X[obs,]*beta + randomIntercept[obsSchoolID[obs]], sigma); // linear model
+  }
+}
+
+generated quantities {
+  real ICC;
+  ICC = tauIntercept^2/(tauIntercept^2 + sigma^2);
+
+  vector[N] personLike = rep_vector(0.0, N);
+  for (obs in 1:N){
+    personLike[obs] = 
+      normal_lpdf(y[obs] | X[obs,]*beta + randomIntercept[obsSchoolID[obs]], sigma);
+  }
+
+  // contrast estimation (linear combinations)
+  vector[nContrasts] constrastEstimates;
+  constrastEstimates = contrastMatrix*beta;
+}
+```{r partitionSumScore2, include=TRUE, results='hide'}
+if (runStan){
+  modelRandomIntercept_Stan = cmdstan_model(stan_file = "lecture07_model02.stan.txt")
+  modelRandomIntercept_Formula = formula(sumScore ~ 1, data = modelingData)
+  modelRandomIntercept_modelMatrix = model.matrix(modelRandomIntercept_Formula, data = modelingData)
+
+  modelRandomIntercept_Data = list(
+      X = modelRandomIntercept_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelRandomIntercept_modelMatrix), P = ncol(modelRandomIntercept_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelRandomIntercept_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelRandomIntercept_modelMatrix), ncol = ncol(modelRandomIntercept_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100,
+      priorTauMean = 0, priorTauSD = 100,
+      nContrasts = 0, contrastMatrix = matrix(data = NA, nrow = 0, ncol = ncol(modelRandomIntercept_modelMatrix))
+  )
+
+  modelRandomIntercept_Samples = modelRandomIntercept_Stan$sample(
+      data = modelRandomIntercept_Data, seed = 0608202302, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+  
+  modelRandomIntercept_Summary = modelRandomIntercept_Samples$summary()
+  modelRandomIntercept_Loo = modelRandomIntercept_Samples$loo(variables = "personLike")
+}
+The results now include tauIntercept, the SD of the random intercepts (between-school variance), and sigma, the residual SD (within-school variance). The Intraclass Correlation (ICC) is computed in the generated quantities block.print(
+  modelRandomIntercept_Summary[
+    grep(pattern = "beta|sigma|tauIntercept|ICC", x = modelRandomIntercept_Summary$variable),
+    ], 
+  n = Inf
+)
+The ICC is estimated to be about 0.16, meaning that 16% of the total variance in sum scores is attributable to differences between schools. The 90% credible interval for the ICC [0.09, 0.24] does not contain zero, suggesting a meaningful amount of between-school variance.We can formally compare the single-level and two-level models using the Leave-One-Out Information Criterion (LOOIC). A lower LOOIC indicates better out-of-sample predictive fit. loo_compare(
+  list(
+    emptyGLM = modelEmptyGLM_Loo, 
+    emptyRandomIntercept = modelRandomIntercept_Loo
+  )
+)
+The elpd_diff is the difference in expected log predictive density. The two-level model (emptyRandomIntercept) has a much higher ELPD (difference is -165.7, in its favor) than the single-level model. The difference is many times its standard error, providing strong evidence that including random intercepts for schools improves the model.Partitioning Variance in the Binary frlunch PredictorWe repeat the process for the binary frlunch predictor, using a logistic link function. This helps us understand how much of the variation in lunch status is at the school vs. student level.Logit(frlunchpc​=1)=β0c​The Stan code uses bernoulli_logit_lpmf for the logistic regression.data {
+  int<lower=0> N;         // total number of observations
+  int<lower=0> P;         // number of predictors (plus column for intercept)
+  matrix[N, P] X;         // model.matrix() from R 
+  array[N] int y;         // outcome (now an array instead of vector)
+  vector[P] priorMeanBeta;     // prior mean vector for coefficients
+  matrix[P, P] priorCovBeta;   // prior covariance matrix for coefficients
+}
+
+parameters {
+  vector[P] beta;         // vector of coefficients for beta
+}
+
+model {
+  beta ~ multi_normal(priorMeanBeta, priorCovBeta); // prior for coefficients
+  y ~ bernoulli_logit(X*beta); // linear model predicting single outcome
+}
+
+generated quantities {
+  real prob;
+  prob = exp(beta[1])/(1+exp(beta[1])); // Convert intercept to probability
+
+  vector[N] personLike = rep_vector(0.0, N);  
+  for (i in 1:N) {
+    personLike[i] = bernoulli_logit_lpmf(y[i] | X[i]*beta);
+  }
+}
+Now we add a random intercept to the logistic model.Logit(frlunchpc​=1)β0c​​==​β0c​γ00​+U0c​​The Stan code is updated accordingly. Note the ICC calculation for a binary outcome uses the variance of the logistic distribution (π2/3≈3.29) as the level-1 variance.data {
+  int<lower=0> N;           // total number of observations
+  int<lower=0> nSchools;       // number of unique level-2 units in data
+  array[N] int obsSchoolID;    // the level-2 ID corresponding to each row of the data
+  int<lower=0> P;           // number of predictors (plus column for intercept)
+  matrix[N, P] X;           // model.matrix() from R 
+  array[N] int y;           // outcome (now in array instead of vector)
+  vector[P] priorMeanBeta;       // prior mean vector for coefficients
+  matrix[P, P] priorCovBeta;     // prior covariance matrix for coefficients
+  real priorTauMean;                // prior mean parameter for random intercept standard deviation
+  real priorTauSD;                  // prior sd parameter for random intercept standard deviation
+}
+
+parameters {
+  vector[P] beta;                    // vector of coefficients for beta
+  vector[nSchools] randomIntercept;     // random intercept for each level-2 unit
+  real<lower=0> tauIntercept;           // random intercept for each level-2 unit
+}
+
+model {
+  beta ~ multi_normal(priorMeanBeta, priorCovBeta);         // prior for coefficients
+  tauIntercept ~ lognormal(priorTauMean, priorTauSD);       // prior for random intercept standard deviation
+
+  for (school in 1:nSchools){
+    randomIntercept[school] ~ normal(0, tauIntercept);
+  }
+
+  for (obs in 1:N){
+    y[obs] ~ bernoulli_logit(X[obs,]*beta + randomIntercept[obsSchoolID[obs]]); // linear model
+  }
+}
+
+generated quantities {
+  real prob;
+  prob = exp(beta[1])/(1+exp(beta[1])); // Probability for a school with random intercept = 0
+
+  real ICC;
+  ICC = tauIntercept^2/(tauIntercept^2 + ((pi()^2)/3));
+
+  vector[N] personLike = rep_vector(0.0, N);
+  for (n in 1:N){
+    personLike[n] = bernoulli_logit_lpmf(y[n] | X[n,]*beta + randomIntercept[obsSchoolID[n]]);
+  }
+}
+```{r partitionFRlunch, include=TRUE, results='hide'}
+if (runStan){
+  modelEmptyGLMfrRandomIntercept_Stan = cmdstan_model(stan_file = "lecture07_model04.stan.txt")
+  modelEmptyGLMfrRandomIntercept_Formula = formula(frlunch ~ 1, data = modelingData)
+  modelEmptyGLMfrRandomIntercept_modelMatrix = model.matrix(modelEmptyGLMfrRandomIntercept_Formula, data = modelingData)
+  
+  modelEmptyGLMfrRandomIntercept_Data = list(
+    X = modelEmptyGLMfrRandomIntercept_modelMatrix, y = modelingData$frlunch,
+    N = nrow(modelingData), P = ncol(modelEmptyGLMfrRandomIntercept_modelMatrix), 
+    nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+    priorMeanBeta = rep(0, ncol(modelEmptyGLMfrRandomIntercept_modelMatrix)), 
+    priorCovBeta = diag(x = 10000, nrow = ncol(modelEmptyGLMfrRandomIntercept_modelMatrix), ncol = ncol(modelEmptyGLMfrRandomIntercept_modelMatrix)),
+    priorTauMean = 0, priorTauSD = 100)
+
+  modelEmptyGLMfrRandomIntercept_Samples = modelEmptyGLMfrRandomIntercept_Stan$sample(
+      data = modelEmptyGLMfrRandomIntercept_Data, seed = 0608202305, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+
+  modelEmptyGLMfrRandomIntercept_Summary = modelEmptyGLMfrRandomIntercept_Samples$summary()
+}
+```{r partitionFRlunch_results, include=TRUE, echo=FALSE}
+print(
+  modelEmptyGLMfrRandomIntercept_Summary[
+    grep(pattern = "beta|tauIntercept|ICC|prob", x = modelEmptyGLMfrRandomIntercept_Summary$variable),
+    ], 
+  n = Inf
+)
+The ICC for frlunch is about 0.37, indicating that 37% of the variance in a student's probability of receiving free/reduced lunch is at the school level. This is a substantial amount and confirms that frlunch has both student- and school-level components.Models Predicting Sum Score from Free/Reduced Lunch"Smushed" Level-1 Slope for frlunchWe now add frlunch as a level-1 predictor of sumScore. This model is "smushed" because it does not distinguish between the within-school and between-school effects of lunch status.sumScorepc​β0c​β1c​​===​β0c​+β1c​(frlunchpc​)+epc​γ00​+U0c​γ10​​This model uses the same Stan code as the empty random intercept model (lecture07_model02.stan.txt), but with a different design matrix.if (runStan){
+  modelSmushed_Formula = formula(sumScore ~ 1 + frlunch, data = modelingData)
+  modelSmushed_modelMatrix = model.matrix(modelSmushed_Formula, data = modelingData)
+  modelSmushed_Data = list(
+      X = modelSmushed_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelSmushed_modelMatrix),P = ncol(modelSmushed_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelSmushed_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelSmushed_modelMatrix), ncol = ncol(modelSmushed_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100, priorTauMean = 0, priorTauSD = 100,
+      nContrasts = 0, contrastMatrix = matrix(data = NA, nrow = 0, ncol = ncol(modelSmushed_modelMatrix))
+  )
+
+  modelSmushed_Samples = modelRandomIntercept_Stan$sample(
+      data = modelSmushed_Data, seed = 0608202303, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+  
+  modelSmushed_Summary = modelSmushed_Samples$summary()
+}
+```{r smushed_results, include=TRUE, echo=FALSE}
+print(
+  modelSmushed_Summary[
+    grep(pattern = "beta|sigma|tauIntercept|ICC", x = modelSmushed_Summary$variable),
+    ], 
+  n = Inf
+)
+The coefficient for frlunch (beta[2]) is -1.53. The 90% credible interval [-1.81, -1.25] is well below zero. This suggests a negative association, but we cannot tell if it's a student-level effect, a school-level effect, or both.Unsmushing with Centered School Mean (Contextual Model)To properly separate the effects, we add the centered school-mean of frlunch (SMfrlunch30) as a level-2 predictor. The frlunch coefficient now represents the pure within-school effect.sumScorepc​β0c​β1c​​===​β0c​+β1c​(frlunchpc​)+epc​γ00​+γ01​(SMfrlunchc​−.30)+U0c​γ10​​This also uses the random intercept Stan code (lecture07_model02.stan.txt). We use the contrastMatrix feature to compute the total between-school effect (γ10​+γ01​) as a generated quantity.if (runStan){
+  modelLunch_Formula = formula(sumScore ~ 1 + frlunch + SMfrlunch30, data = modelingData)
+  modelLunch_modelMatrix = model.matrix(modelLunch_Formula, data = modelingData)
+  modelLunch_contrastMatrix = matrix(data = c(0, 1, 1), nrow = 1) # between = within + contextual
+
+  modelLunch_Data = list(
+      X = modelLunch_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelLunch_modelMatrix), P = ncol(modelLunch_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelLunch_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelLunch_modelMatrix), ncol = ncol(modelLunch_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100, priorTauMean = 0, priorTauSD = 100,
+      nContrasts = nrow(modelLunch_contrastMatrix), contrastMatrix = modelLunch_contrastMatrix)
+
+  modelLunch_Samples = modelRandomIntercept_Stan$sample(
+      data = modelLunch_Data, seed = 0608202306, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+
+  modelLunch_Summary = modelLunch_Samples$summary()
+}
+```{r contextual_results, include=TRUE, echo=FALSE}
+print(
+  modelLunch_Summary[
+    grep(pattern = "beta|sigma|tauIntercept|ICC|constrastEstimates", x = modelLunch_Summary$variable),
+    ], 
+  n = Inf
+)
+Now we have two slopes:beta[2] (for frlunch): -1.04. This is the within-school effect. Within any given school, a student receiving free lunch is predicted to have a sum score that is 1.04 points lower than a student not receiving free lunch.beta[3] (for SMfrlunch30): -3.13. This is the contextual effect. After controlling for a student's own lunch status, for every 10% increase in the proportion of students with free lunch at a school, the school's average sum score is predicted to decrease by 0.313 points.constrastEstimates[1]: -4.18. This is the total between-school effect. A school where 100% of students have free lunch is predicted to have an average sum score 4.18 points lower than a school where 0% have free lunch. The effect of school poverty is much larger than the effect of individual student poverty.Switching to Cluster-Mean-Centered Predictor (Within-Between Model)An alternative, equivalent parameterization is to use the cluster-mean-centered frlunch (WSfrlunch) at level 1. This directly estimates the within- and between-school slopes as model parameters.sumScorepc​β0c​β1c​​===​β0c​+β1c​(frlunchpc​−SMfrlunchc​)+epc​γ00​+γ01​(SMfrlunchc​−.30)+U0c​γ10​​if(runStan){
+  modelLunchCMC_Formula = formula(sumScore ~ 1 + WSfrlunch + SMfrlunch30, data = modelingData)
+  modelLunchCMC_modelMatrix = model.matrix(modelLunchCMC_Formula, data = modelingData)
+  modelLunchCMC_contrastMatrix = matrix(data = c(0, -1, 1), nrow = 1) # contextual = between - within
+
+  modelLunchCMC_Data = list(
+      X = modelLunchCMC_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelLunchCMC_modelMatrix), P = ncol(modelLunchCMC_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelLunchCMC_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelLunchCMC_modelMatrix), ncol = ncol(modelLunchCMC_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100, priorTauMean = 0, priorTauSD = 100,
+      nContrasts = nrow(modelLunchCMC_contrastMatrix), contrastMatrix = modelLunchCMC_contrastMatrix)
+
+  modelLunchCMC_Samples = modelRandomIntercept_Stan$sample(
+      data = modelLunchCMC_Data, seed = 0608202307, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+
+  modelLunchCMC_Summary = modelLunchCMC_Samples$summary()
+}
+```{r within-between_results, include=TRUE, echo=FALSE}
+print(
+  modelLunchCMC_Summary[
+    grep(pattern = "beta|sigma|tauIntercept|ICC|constrastEstimates", x = modelLunchCMC_Summary$variable),
+    ], 
+  n = Inf
+)
+The results confirm the reparameterization:beta[2] (for WSfrlunch): -1.04. This is the within-school slope, identical to the previous model.beta[3] (for SMfrlunch30): -4.18. This is now the total between-school slope, identical to the linear combination from the previous model.The model fit (e.g., LOOIC) is identical to the contextual model, as it is just a different way of writing the same underlying model.Random Slope for WSfrlunchDoes the within-school effect of lunch status vary across schools? We can test this by adding a random slope for WSfrlunch.sumScorepc​β0c​β1c​​===​β0c​+β1c​(frlunchpc​−SMfrlunchc​)+epc​γ00​+γ01​(SMfrlunchc​−.30)+U0c​γ10​+U1c​​The Stan code now models a multivariate normal distribution for the random effects (intercepts and slopes), estimating their standard deviations and their correlation. This is handled using a Cholesky factorization of the covariance matrix for efficiency and stability.data {
+  int<lower=0> N;           // total number of observations
+  int<lower=0> nSchools;       // number of unique level-2 units in data
+  array[N] int obsSchoolID;    // the level-2 ID corresponding to each row of the data
+  int<lower=0> P;           // number of predictors (plus column for intercept)
+  matrix[N, P] X;           // model.matrix() from R 
+  vector[N] y;              // outcome
+  vector[P] priorMeanBeta;       // prior mean vector for coefficients
+  matrix[P, P] priorCovBeta;     // prior covariance matrix for coefficients
+  real priorSigmaMean;         // prior mean parameter for residual standard deviation
+  real priorSigmaSD;           // prior sd parameter for residual standard deviation
+  int<lower=0> nContrasts;         // number of contrasts to estimate
+  matrix[nContrasts,P] contrastMatrix;   // contrast matrix for additional effects
+  int randomSlopeColumn;             // column of X that contains the random slope
+  vector[2] priorTauMean;                // prior mean parameter for random effects standard deviation
+  vector[2] priorTauSD;                  // prior sd parameter for random effects standard deviation
+  real priorRandomEffectsCorrLJK;       // prior for random effects correlation  
+}
+
+parameters {
+  vector[P] beta;                    // vector of coefficients for beta
+  real<lower=0> sigma;               // residual standard deviation
+  array[nSchools] vector[2] randomEffects;     // random intercept and slope for each level-2 unit
+  cholesky_factor_corr[2] randomEffectsCorrL;
+  vector<lower=0>[2] randomEffectsSD;
+}
+
+model {
+  // for random effects;
+  vector[2] meanRandomEffects = rep_vector(0, 2);
+  matrix[2, 2] randomEffectsCovL;
+  randomEffectsCorrL ~ lkj_corr_cholesky(priorRandomEffectsCorrLJK);
+  randomEffectsSD ~ lognormal(priorTauMean, priorTauSD);
+  randomEffectsCovL = diag_pre_multiply(randomEffectsSD, randomEffectsCorrL);
+
+  beta ~ multi_normal(priorMeanBeta, priorCovBeta);        // prior for coefficients
+  sigma ~ lognormal(priorSigmaMean, priorSigmaSD);         // prior for sigma
+
+  for (school in 1:nSchools){
+    randomEffects[school] ~ multi_normal_cholesky(meanRandomEffects, randomEffectsCovL); 
+  }
+
+  for (obs in 1:N){
+    y[obs] ~ normal(
+      X[obs,]*beta + randomEffects[obsSchoolID[obs],1] + randomEffects[obsSchoolID[obs],2]*X[obs,randomSlopeColumn], 
+      sigma); 
+  }
+}
+
+generated quantities {
+  vector[N] personLike = rep_vector(0.0, N);
+  for (obs in 1:N){
+    personLike[obs] = 
+      normal_lpdf(y[obs] | 
+                  X[obs,]*beta + randomEffects[obsSchoolID[obs],1] + randomEffects[obsSchoolID[obs],2]*X[obs,randomSlopeColumn],
+                  sigma);
+  }
+
+  // transform correlation matrix and SD vector to covariance matrix
+  corr_matrix[2] randomEffectsCorr;
+  cov_matrix[2] randomEffectsCov; 
+  matrix[2, 2] randomEffectsCovL;
+ 
+  randomEffectsCorr = multiply_lower_tri_self_transpose(randomEffectsCorrL);
+  randomEffectsCovL = diag_pre_multiply(randomEffectsSD, randomEffectsCorrL);
+  randomEffectsCov = multiply_lower_tri_self_transpose(randomEffectsCovL);
+}
+```{r random-slope, include=TRUE, results='hide'}
+if(runStan){
+  modelRandomSlope_Stan = cmdstan_model(stan_file = "lecture07_model05.stan.txt")
+  modelRandomSlope_Formula = formula(sumScore ~ 1 + WSfrlunch + SMfrlunch30, data = modelingData)
+  modelRandomSlope_modelMatrix = model.matrix(modelRandomSlope_Formula, data = modelingData)
+
+  modelRandomSlope_Data = list(
+      X = modelRandomSlope_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelRandomSlope_modelMatrix), P = ncol(modelRandomSlope_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelRandomSlope_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelRandomSlope_modelMatrix), ncol = ncol(modelRandomSlope_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100,
+      nContrasts = 0, contrastMatrix = matrix(data = NA, nrow = 0, ncol = ncol(modelRandomSlope_modelMatrix)),
+      randomSlopeColumn = which(colnames(modelRandomSlope_modelMatrix) == "WSfrlunch"),
+      priorTauMean = c(0, -5), priorTauSD = c(100, .5), priorRandomEffectsCorrLJK = 1)
+
+  modelRandomSlope_Samples = modelRandomSlope_Stan$sample(
+      data = modelRandomSlope_Data, seed = 0608202308, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+
+  modelRandomSlope_Summary = modelRandomSlope_Samples$summary()
+}
+```{r random-slope-results, include=TRUE, echo=FALSE}
+print(
+  modelRandomSlope_Summary[
+    grep(pattern = "beta|sigma|randomEffectsSD|randomEffectsCorr", x = modelRandomSlope_Summary$variable),
+    ],
+  n = Inf
+)
+The new parameters are:randomEffectsSD[1]: SD of the random intercepts (0.43).randomEffectsSD[2]: SD of the random slopes for WSfrlunch (0.69). The 90% credible interval [0.46, 0.99] does not include zero, suggesting that there is some variability across schools in the effect of frlunch.randomEffectsCorr[2,1]: The correlation between intercepts and slopes (0.07). This is near zero, indicating that a school's average achievement is not strongly related to the size of its within-school achievement gap related to lunch status.Cross-Level InteractionSince the effect of frlunch appears to vary across schools, we can try to explain that variation with a level-2 predictor. Here, we test if the school's proportion of free-lunch students (SMfrlunch30) predicts the size of the within-school frlunch slope.β1c​​=​γ10​+γ11​(SMfrlunchc​−.30)+U1c​​This model uses the same random slope Stan code (lecture07_model05.stan.txt).if (runStan){
+  modelRandomSlopeCLI_Formula = formula(sumScore ~ 1 + WSfrlunch + SMfrlunch30 + WSfrlunch:SMfrlunch30, data = modelingData)
+  modelRandomSlopeCLI_modelMatrix = model.matrix(modelRandomSlopeCLI_Formula, data = modelingData)
+  
+  modelRandomSlopeCLI_Data = list(
+      X = modelRandomSlopeCLI_modelMatrix, y = modelingData$sumScore,
+      N = nrow(modelRandomSlopeCLI_modelMatrix), P = ncol(modelRandomSlopeCLI_modelMatrix), 
+      nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      priorMeanBeta = rep(0, ncol(modelRandomSlopeCLI_modelMatrix)), 
+      priorCovBeta = diag(x = 10000, nrow = ncol(modelRandomSlopeCLI_modelMatrix), ncol = ncol(modelRandomSlopeCLI_modelMatrix)), 
+      priorSigmaMean = 0, priorSigmaSD = 100,
+      nContrasts = 0, contrastMatrix = matrix(data = NA, nrow = 0, ncol = ncol(modelRandomSlopeCLI_modelMatrix)),
+      randomSlopeColumn = which(colnames(modelRandomSlopeCLI_modelMatrix) == "WSfrlunch"),
+      priorTauMean = c(0, -5), priorTauSD = c(100, .5), priorRandomEffectsCorrLJK = 1)
+
+  modelRandomSlopeCLI_Samples = modelRandomSlope_Stan$sample(
+      data = modelRandomSlopeCLI_Data, seed = 0608202309, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+
+  modelRandomSlopeCLI_Summary = modelRandomSlopeCLI_Samples$summary()
+}
+```{r cross-level-results, include=TRUE, echo=FALSE}
+print(
+  modelRandomSlopeCLI_Summary[
+    grep(pattern = "beta|sigma|randomEffectsSD|randomEffectsCorr", x = modelRandomSlopeCLI_Summary$variable),
+    ],
+  n = Inf
+)
+The key new parameter is beta[4], the coefficient for the WSfrlunch:SMfrlunch30 interaction term. Its posterior mean is 1.15, and its 90% credible interval [-0.34, 2.65] contains zero. This suggests there is no clear evidence that the within-school effect of lunch status becomes more or less negative in schools with higher proportions of students receiving free lunch. The random slope variance (randomEffectsSD[2]) has decreased slightly after adding the interaction, as expected.Multivariate MLM with Latent CenteringAs a final alternative, we can fit a multivariate model that simultaneously models frlunch (as a binary outcome) and sumScore (as a continuous outcome). In this formulation, the school-level mean of frlunch is treated as a latent variable (the random intercept from the frlunch model) rather than an observed variable. This accounts for the uncertainty in the school means.The Stan code for this is more complex, defining a joint likelihood for the two outcomes.data {
+  int<lower=0> N;                            // total number of observations
+  int<lower=0> nSchools;                     // number of unique level-2 units in data
+  array[N] int obsSchoolID;                  // the level-2 ID corresponding to each row of the data
+  array[N] int frlunch;                      // person-level frlunch variable
+  vector[N] score;                           // score outcome variable
+  real priorBetaMean;                        // prior mean vector for coefficients (all same)
+  real priorBetaSD;                          // prior sd for coefficients (all same)
+  real priorSigmaMean;                       // prior mean parameter for residual standard deviation
+  real priorSigmaSD;                         // prior sd parameter for residual standard deviation
+  real priorTauScoreMean;                    // prior mean parameter for score random intercept standard deviation
+  real priorTauScoreSD;                      // prior sd parameter for score random intercept standard deviation
+  real priorTauFrlunchMean;                  // prior mean parameter for frlunch random intercept standard deviation
+  real priorTauFrlunchSD;                    // prior sd parameter for frlunch random intercept standard deviation
+}
+
+parameters {
+  real scoreIntercept;                       // fixed intercept for score
+  real frlunchIntercept;                     // fixed intercept for frlunch
+  real frlunchSlope;                         // fixed slope for frlunch
+  real frlunchMeanSlope;                     // fixed slope for frlunch mean (from Multivariate MLM)
+  real<lower=0> sigma;                       // residual standard deviation for score
+  vector[nSchools] scoreRandomIntercept;     // random intercept for each level-2 unit for score
+  vector[nSchools] frlunchRandomIntercept;   // random intercept for each level-2 unit for frlunch
+  real<lower=0> tauScoreIntercept;           // random intercept standard deviation for score
+  real<lower=0> tauFrlunchIntercept;         // random intercept standard deviation for frlunch
+}
+
+model {
+  scoreIntercept ~ normal(priorBetaMean, priorBetaSD);                     // prior for score intercept
+  frlunchIntercept ~ normal(priorBetaMean, priorBetaSD);                   // prior for frlunch intercept
+  frlunchSlope ~ normal(priorBetaMean, priorBetaSD);                       // prior for frlunch slope
+  frlunchMeanSlope ~ normal(priorBetaMean, priorBetaSD);                   // prior for frlunch mean slope
+
+  sigma ~ lognormal(priorSigmaMean, priorSigmaSD);                         // prior for sigma
+  tauScoreIntercept ~ lognormal(priorTauScoreMean, priorTauScoreSD);       // prior for tau for score
+  tauFrlunchIntercept ~ lognormal(priorTauFrlunchMean, priorTauFrlunchSD); // prior for tau for frlunch
+
+  for (school in 1:nSchools){
+    scoreRandomIntercept[school] ~ normal(0, tauScoreIntercept);
+    frlunchRandomIntercept[school] ~ normal(0, tauFrlunchIntercept);
+  }
+
+  for (obs in 1:N){
+    // Model for frlunch outcome
+    frlunch[obs] ~ bernoulli_logit(frlunchIntercept + frlunchRandomIntercept[obsSchoolID[obs]]);
+
+    // Model for score outcome, predicted by frlunch and the latent school mean of frlunch
+    score[obs] ~ normal(scoreIntercept + frlunchSlope*frlunch[obs] + 
+                    frlunchMeanSlope * (frlunchIntercept + frlunchRandomIntercept[obsSchoolID[obs]]) + 
+                    scoreRandomIntercept[obsSchoolID[obs]], sigma); 
+    
+  }
+}
+
+generated quantities {
+  real ICCscore;
+  ICCscore = tauScoreIntercept^2/(tauScoreIntercept^2 + sigma^2);
+
+  real ICCfrlunch;
+  ICCfrlunch = tauFrlunchIntercept^2/(tauFrlunchIntercept^2 + (pi()^2/3));
+
+  vector[N] personLike = rep_vector(0.0, N);
+  for (obs in 1:N){
+    personLike[obs] = 
+      normal_lpdf(score[obs] | scoreIntercept + frlunchSlope*frlunch[obs] + 
+                  frlunchMeanSlope * (frlunchIntercept + frlunchRandomIntercept[obsSchoolID[obs]]) + 
+                  scoreRandomIntercept[obsSchoolID[obs]], sigma);
+  }
+}
+```{r multiv, include=TRUE, results='hide'}
+if (runStan){
+  modelMultivariate_Stan = cmdstan_model(stan_file = "lecture07_model06.stan.txt")
+  modelMultivariate_Data = list(
+      N = nrow(modelingData), nSchools = nSchools, obsSchoolID = modelingData$stanSchoolID,
+      frlunch = modelingData$frlunch, score = modelingData$sumScore,
+      priorBetaMean = 0, priorBetaSD = sqrt(10000), 
+      priorSigmaMean = 0, priorSigmaSD = 100,
+      priorTauScoreMean = 0, priorTauScoreSD = 100,
+      priorTauFrlunchMean = 0, priorTauFrlunchSD = 100)
+
+  modelMultivariate_Samples = modelMultivariate_Stan$sample(
+      data = modelMultivariate_Data, seed = 0608202310, chains = 4, parallel_chains = 4, 
+      iter_warmup = 2000, iter_sampling = 1000, refresh = 100)
+  
+  modelMultivariate_Summary = modelMultivariate_Samples$summary()
+}
+```{r multiv-results, include=TRUE, echo=FALSE}
+print(
+  modelMultivariate_Summary[
+    grep(pattern = "scoreIntercept|frlunchIntercept|frlunchSlope|frlunchMeanSlope|sigma|tauScoreIntercept|tauFrlunchIntercept|ICC", 
+      x = modelMultivariate_Summary$variable),
+    ],
+  n = Inf
+)
+In this model:frlunchSlope: This is the within-school effect of frlunch on score. The estimate is -1.05, very similar to our previous models.frlunchMeanSlope: This is the contextual effect, where the predictor is the latent school-level logit of receiving free lunch. The estimate is -1.75. This coefficient is on the logit scale, so it's not directly comparable to the previous contextual effect without transformation. However, the results are substantively consistent with our earlier findings, confirming a strong negative effect of school-level poverty on achievement, even after accounting for individual student poverty. The use of latent means is theoretically preferred as it properly accounts for the unreliability of observed group means, particularly for small groups.

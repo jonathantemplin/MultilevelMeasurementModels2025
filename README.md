@@ -1,2 +1,2 @@
-# MultilevelMeasurementModels2025
-Repository for course materials for the Multilevel Measurement Models workshop, given in Summer 2025
+# MLMM2025
+Multilevel Measurement Models Workshop (Summer 2025)

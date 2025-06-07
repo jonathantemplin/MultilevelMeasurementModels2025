@@ -1,0 +1,108 @@
+---
+title: "Introduction to Multilevel Measurement Models"
+author: "SMIP Summer School 2025: Lecture 01" 
+format: 
+  revealjs:
+    multiplex: true
+    footer: "SMIP Summer School 2025, Multilevel Measurement Models, Lecture 01"
+    theme: ["pp.scss"]
+    slide-number: c/t
+    incremental: false
+editor: source
+--- 
+
+## About Your Instructors
+
+- [Lesa Hoffman](https://lesahoffman.com): lesa-hoffman@uiowa.edu
+- [Jonathan Templin](https://jonathantemplin.com): jonathan-templin@uiowa.edu
+
+## Workshop Introduction
+This is an ambitious workshop:
+
+* Measurement models (Item Response Theory)
+* Multilevel models for clustered data
+* Bayesian statistics
+* Multilevel measurement models
+
+Each could be its own workshop
+
+## Workshop Materials
+
+Set of slides on topics pulled from other course materials
+
+* In case additional detail on any topic is needed
+
+Full set of analysis files in R and Stan
+
+* In case you would like to work ahead
+
+## Workshop Schedule
+
+* Mornings: 9:00-12:30 (9:00-13:00 Friday)
+  * Break at 10:45
+* Afternoons:
+  * Tuesday: 14:00-17:15 (break at 16:00)
+  * Wednesday: 15:15-17:45 (break at 16:45)
+  * Thursday: 14:00-15:45 (no break)
+
+## Lecture and Example Time Plan
+
+Last hour of each day is open
+
+Your choice:
+
+* Questions
+* Example practice
+* Work with your data
+* Leave early
+
+## Syntax and Model Note
+
+* As stan models can take a very long time to run, all prior model results have been saved
+* Model results are in the ```models``` folder
+* The scriptGuide.pdf file contains the details for each model [https://www.dropbox.com/s/wvxqd9vha1u8ov5/%21scriptGuide.pdf?dl=0](https://www.dropbox.com/s/wvxqd9vha1u8ov5/%21scriptGuide.pdf?dl=0)
+* Some slides are written in Quarto (markdown), which can be rendered from the ```slides``` folder
+
+## Workshop Sections
+
+1. Introduction to Measurement Models, Bayesian Statistics, and Stan
+2. Introduction to Multilevel Models
+3. Introduction to Multilevel Measurement Models
+
+# Running Example
+
+## Running Example Data
+
+Data come from a secondary school (10th grade) end-of-grade mathematics assessment given around the year 2006 in a midwestern state in the USA
+
+* Sample of 50 students from 62 schools
+* Sample of 10 mathematics items from the assessment
+  * Items are scored correct/incorrect (```score1```-```score10```)
+  * The sum of all 10 items is included (```sumScore```)
+* Other variables:
+  * ```studentID```: Student ID number (created for this example)
+  * ```schoolID```: School ID number (created for this example)
+  * ```frlunch```: Free/reduced lunch status (1 = free/reduced lunch, 0 = not free/reduced lunch; indirect indicator of student socioeconomic status)
+
+
+## Distribution of Sum Scores
+
+```{r sumScore, echo=FALSE, fig.height=4, fig.width=6}
+load("modelingData.RData")
+hist(modelingData$sumScore)
+```
+
+## Distribution of Item Difficulties
+
+```{r itemScores, echo=FALSE, fig.height=4, fig.width=6}
+hist(apply(X=modelingData[paste0("score", 1:10)], MARGIN=2, FUN=mean), xlab = "Item Difficulty", main = "")
+
+```
+
+## Workshop Lectures
+
+- Lecture 01: Introduction to Multilevel Measurement Models Workshop
+- Lecture 02: Introduction to Measurement Models
+- Lecture 03: Introduction to Bayesian Statistics
+
+

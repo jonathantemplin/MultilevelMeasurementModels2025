@@ -1,0 +1,206 @@
+/*-- scss:defaults --*/
+
+// Import modern fonts from Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&display=swap');
+
+// Clemson University Inspired Color Palette
+$clemsonOrange: #F56600;
+$clemsonPurple: #522D80;
+$lightNeutral: #FCFBF9; // Very light, slightly warm off-white for background
+$darkText: #333333;    // Dark gray for body text
+
+// Base settings for a modern, clean theme
+$backgroundColor: $lightNeutral;
+
+// Primary/body text
+$mainFont: 'Open Sans', sans-serif;
+$mainFontSize: 26px;
+$mainColor: $darkText;
+
+// Vertical spacing between blocks of text
+$blockMargin: 22px;
+
+// Headings
+$headingMargin: 0 0 $blockMargin 0;
+$headingFont: 'Montserrat', sans-serif;
+$headingColor: $clemsonPurple; // Clemson Purple for headings
+$headingLineHeight: 1.3;
+$headingLetterSpacing: normal;
+$headingTextTransform: none;
+$headingTextShadow: none;
+$headingFontWeight: 700;
+$heading1TextShadow: $headingTextShadow;
+
+// Adjusting heading sizes for a clear hierarchy
+$heading1Size: 2.8em;
+$heading2Size: 2.0em;
+$heading3Size: 1.4em;
+$heading4Size: 1.0em;
+
+$codeFont: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+// Links and actions
+$linkColor: $clemsonOrange; // Clemson Orange for links
+$linkColorHover: darken($clemsonOrange, 10%);
+
+// Text selection
+$selectionBackgroundColor: lighten($clemsonOrange, 30%); // Lighter Clemson Orange for selection
+$selectionColor: #FFFFFF; // White text on selection for contrast
+
+/*-- scss:rules --*/
+
+// General RevealJS overrides for a cleaner look
+.reveal {
+  font-family: $mainFont;
+  font-size: $mainFontSize;
+  font-weight: 400;
+  color: $mainColor;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  margin: $headingMargin;
+  color: $headingColor;
+  font-family: $headingFont;
+  line-height: $headingLineHeight;
+  letter-spacing: $headingLetterSpacing;
+  text-transform: $headingTextTransform;
+  text-shadow: $headingTextShadow;
+  font-weight: $headingFontWeight;
+  word-wrap: break-word;
+}
+
+.reveal h1 { font-size: $heading1Size; }
+.reveal h2 { font-size: $heading2Size; }
+.reveal h3 { font-size: $heading3Size; }
+.reveal h4 { font-size: $heading4Size; }
+
+// Add underline to main titles of content slides
+.reveal .slides section > h1:first-child,
+.reveal .slides section > h2:first-child {
+  border-bottom: 2px solid $clemsonOrange;
+  padding-bottom: 0.3em; // Space between text and underline
+  // The existing $headingMargin will provide space below the underline
+}
+
+
+.reveal p {
+  margin-bottom: $blockMargin;
+  line-height: 1.5;
+}
+
+.reveal ul,
+.reveal ol {
+  display: block;
+  margin-bottom: $blockMargin;
+  line-height: 1.5;
+}
+
+.reveal li {
+  margin-bottom: 0.5em;
+}
+
+.reveal a {
+  color: $linkColor;
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+
+  &:hover {
+    color: $linkColorHover;
+    text-decoration: underline;
+  }
+}
+
+.reveal code {
+  font-family: $codeFont;
+  background-color: #e9ecef; // Standard light gray for inline code
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: $darkText; // Ensure inline code text is readable
+}
+
+.reveal pre code {
+  display: block;
+  padding: 1em;
+  overflow: auto;
+  max-height: 600px;
+  word-wrap: normal;
+  border-radius: 8px;
+  background-color: #282c34; // Keep dark background for code blocks for syntax highlighting
+  color: #abb2bf;          // Light text for dark code blocks
+  font-size: 0.8em;
+}
+
+// Title slide specific styles for a modern look
+#title-slide {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 2em;
+
+  h1 {
+    color: $headingColor; // Clemson Purple for title
+    font-size: 3.5em;
+    margin-bottom: 0.5em;
+    border-bottom: none; // Ensure title slide's h1 doesn't get the underline if selectors overlap
+  }
+
+  .author, .date {
+    color: lighten($mainColor, 20%);
+    font-size: 1.2em;
+    margin-top: 0.5em;
+  }
+}
+
+// Footer styling
+.reveal .footer {
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  position: absolute !important;
+  bottom: 0 !important;
+  z-index: 1 !important;
+
+  background-color: darken($backgroundColor, 5%); // Slightly darker than main background
+  color: lighten($darkText, 25%); // Lighter gray text for footer, ensuring contrast
+  padding: 0.5em 1em;
+  font-size: 0.6em;
+  text-align: center;
+  border-top: 1px solid darken($backgroundColor, 10%);
+}
+
+// MathJax specific considerations:
+// This theme does not intentionally override MathJax fonts.
+
+// Make slides look a bit more like a "card"
+.reveal .slide-background-content {
+  // box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+// Progress bar styling
+.reveal .progress {
+  background: rgba(0, 0, 0, 0.1); // Faint background for the track
+  color: $clemsonOrange;         // Clemson Orange for the progress fill
+  height: 5px;
+}
+
+// Controls styling
+.reveal .controls {
+  // .navigate-left, .navigate-right, .navigate-up, .navigate-down {
+  //   font-size: 36px;
+  // }
+}
+

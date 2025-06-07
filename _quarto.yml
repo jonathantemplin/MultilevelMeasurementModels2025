@@ -1,0 +1,17 @@
+project:
+  type: website
+  output-dir: docs
+  resources: 
+   - "_lectures"
+
+website:
+  title: "Multilevel Measurement Models Workshop (Summer 2025)"
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+
+editor: visual
+ 
