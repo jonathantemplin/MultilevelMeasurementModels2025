@@ -2,7 +2,7 @@ project:
   type: website
   output-dir: docs
   resources: 
-   - "_lectures"
+   - "_lectures" 
 
 website:
   title: "Multilevel Measurement Models Workshop (Summer 2025)"
