@@ -6,9 +6,9 @@ title: "Multilevel Measurement Models Workshop (Summer 2025; SMiP Summer School)
 
 ## Instructors: [Lesa Hoffman](https://lesahoffman.com) and [Jonathan Templin](https://jonathantemplin.com)
 
-This repository contains the materials for the Multilevel Measurement Models Workshop 2025, held 30 June - 4 July, 2025 at the Universität Mannheim. This workshop was held in the Research Training Group "Statistical Modeling in Psychology", funded by the [https://www.dfg.de/en](German%20Research%20Foundation%20(DFG)). It is organized by the DFG funded Research Training Group on [https://www.uni-mannheim.de/smip/](“Statistical%20Modeling%20in%20Psychology”%20(SMiP)) in collaboration with the [https://www.iops.nl/](Interuniversity%20Graduate%20School%20of%20Psychometrics%20and%20Sociometrics%20(IOPS)). Details about the event can be found at <https://www.uni-mannheim.de/smip-summerschool/>.
+This repository contains the materials for the Multilevel Measurement Models Workshop 30 June - 4 July, 2025 at the Universität Mannheim. This workshop was sponsored by the Research Training Group "Statistical Modeling in Psychology", funded by the [https://www.dfg.de/en](German%20Research%20Foundation%20(DFG)). It was organized by the DFG funded Research Training Group on [https://www.uni-mannheim.de/smip/](“Statistical%20Modeling%20in%20Psychology”%20(SMiP)) in collaboration with the [https://www.iops.nl/](Interuniversity%20Graduate%20School%20of%20Psychometrics%20and%20Sociometrics%20(IOPS)). Details about the event can be found at <https://www.uni-mannheim.de/smip-summerschool/>.
 
-Workshop videos are available via YouTube with a link forthcoming after the first session of the workshop, on 01 July, 2025.
+Workshop videos will become available via YouTube with a link forthcoming after the first session of the workshop, on 01 July, 2025.
 
 ### Repository Information
 

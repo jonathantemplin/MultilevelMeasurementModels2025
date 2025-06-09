@@ -1,5 +1,23 @@
-title: "Multilevel Modeling with Bayesian Estimation"author: "Lesa Hoffman and Jonathan Templin (Bayesian Adaptation)"format:docx:reference-doc: custom-reference-doc.docxeditor: sourceheader-includes:\usepackage{amsthm}\newtheorem{proposition}{Proposition}knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
-Multilevel Modeling: Predicting Sum Score using Bayesian EstimationThis handout demonstrates the concepts and estimation of multilevel models using Bayesian methods with Stan. We will predict the sum score of 10 example items using binary free/reduced lunch status for level-1 students nested in level-2 schools. The analyses parallel those conducted using Maximum Likelihood, allowing for a comparison of methods and interpretations.Preliminary StepsFirst, we set global R options, then install and load the necessary packages. We use cmdstanr as the interface to Stan. We also define a helper function to compute unit means. Note that the R script includes a runStan flag, which is set to TRUE to execute the analyses. If set to FALSE, it would load pre-saved results.# Set width of output, significant digits, and number of cores for parallel chains
+---
+title: "Multilevel Modeling with Bayesian Estimation"
+format: 
+  docx: 
+    reference-doc: custom-reference-doc.docx
+editor: source
+header-includes:
+- \usepackage{amsthm}
+- \newtheorem{proposition}{Proposition}
+---
+
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+
+## Multilevel Modeling: Predicting Sum Score using Bayesian Estimation
+
+This handout demonstrates the concepts and estimation of multilevel models using Bayesian methods with Stan. We will predict the sum score of 10 example items using binary free/reduced lunch status for level-1 students nested in level-2 schools. The analyses parallel those conducted using Maximum Likelihood, allowing for a comparison of methods and interpretations.Preliminary StepsFirst, we set global R options, then install and load the necessary packages. We use cmdstanr as the interface to Stan. We also define a helper function to compute unit means. Note that the R script includes a runStan flag, which is set to TRUE to execute the analyses. If set to FALSE, it would load pre-saved results.# Set width of output, significant digits, and number of cores for parallel chains
 options(width=120, digits=8, scipen=9, show.signif.stars=FALSE, mc.cores = 4)
 
 # This flag controls whether to run the Stan models or load saved results.
