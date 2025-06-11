@@ -176,13 +176,13 @@ SMIP Summer School 2025: Lecture 02
 </ul></li>
 <li>Many different terms for same ideas, such as the
 <ul>
-<li>Label given to the latent trait: Factor/Ability/Attribute/Construct</li>
+<li>Label given to the latent trait: Factor/Ability/Attribute/Construct/Variable/True Score/Theta (<span class="math inline">\(\theta\)</span>)</li>
 <li>Label given to those giving the data: Examinee/Subject/Participant/Respondent/Patient/Student</li>
+<li>Label given to the data: Outcome/Indicator/Item/Response</li>
 </ul></li>
 <li>What this means:
 <ul>
 <li>Lots of words to keep track of, but (relatively) few concepts</li>
-<li>We will focus on concepts (but have a lot of words)</li>
 </ul></li>
 </ul>
 </section>
@@ -254,12 +254,16 @@ SMIP Summer School 2025: Lecture 02
 <section id="measurement-models" class="slide level2">
 <h2>Measurement Models</h2>
 <ul>
-<li>A distinguishing feature of psychometric models is the second word—they are models
+<li>Distinguishing feature of psychometric models is the second word—they are models
 <ul>
 <li>We often call such models “measurement models”</li>
 </ul></li>
 <li>Measurement models are <u>the mathematical specification that provides the link between the latent variable(s) and the observed data</u></li>
-<li>The form of such models looks different across the wide classes of measurement models (e.g., factor analysis vs.&nbsp;item response models) but wide generalities exist</li>
+<li>The form of such models looks different across the wide classes of measurement models (e.g., factor analysis vs.&nbsp;item response models) but wide generalities exist
+<ul>
+<li>Continuous Responses? “Confirmatory Factor Analysis”</li>
+<li>Categorical responses? “Item Response Theory or Item Factor Analysis”</li>
+</ul></li>
 <li>Measurement models need:
 <ul>
 <li>Distributional assumptions about the data (with link functions)</li>
@@ -268,18 +272,22 @@ SMIP Summer School 2025: Lecture 02
 <li>The key: Observed data are being predicted by latent variable(s)</li>
 </ul>
 </section>
-<section id="measurement-models-vs.-other-measurement-techniques" class="slide level2">
-<h2>Measurement Models vs.&nbsp;Other Measurement Techniques</h2>
+<section id="models-vs.-other-techniques" class="slide level2">
+<h2>Models vs.&nbsp;Other Techniques</h2>
 <p>Measurement models are a different way of thinking about psychometrics than what most people without psychometric training do</p>
 <ul>
 <li>Most scientists enumerate item response scores (e.g., correct response == 1; strongly agree == 5)</li>
-<li>The latent trait score estimate is then formed by adding the response scores together
+<li>The latent trait score estimate is then formed by summing the response scores
 <ul>
-<li>“Add”Stuff” Up” model: Ask Lesa what “stuff” means here…(Scheiße zusammenzählen?)</li>
+<li>“Add”Stuff” Up” model: (Scheiße zusammenzählen?)</li>
 </ul></li>
 <li>As it turns out, the naïve adding together of item scores implies a measurement model
 <ul>
-<li>Called parallel items — very strict assumptions (equal variances and covariances for all observed variables)</li>
+<li>Called parallel items — very strict assumptions
+<ul>
+<li>Equal variances and covariances for all observed variables</li>
+<li>Items measure the trait equally well, with the same amount of error, and no additional relations</li>
+</ul></li>
 </ul></li>
 </ul>
 </section>
@@ -309,8 +317,8 @@ SMIP Summer School 2025: Lecture 02
 <li>For most of this workshop, we will treat latent variables as continuous (interval level)</li>
 <li>As they do not exist, continuous latent variables need a defined metric:
 <ul>
-<li>What is their mean?</li>
-<li>What is their standard deviation?</li>
+<li>What is their mean? (Usually set to zero)</li>
+<li>What is their standard deviation? (Set to one <em>or</em> borrowed from metric of items)</li>
 </ul></li>
 <li>Defining the metric is the first step in a latent variable model
 <ul>
@@ -383,7 +391,10 @@ Y_{p1} = \beta_{Y_1, 0} + \beta_{Y_1,1} \theta_p + e_{p, Y_1} \\
 </section>
 <section id="interpreting-the-parameters" class="slide level2">
 <h2>Interpreting the Parameters</h2>
-<p>All five regression lines implied by the model are then: <span class="math display">\[
+<p>All five regression lines implied by the model are then:</p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<p><span class="math display">\[
 \begin{array}{c}
 Y_{p1} = \beta_{Y_1, 0} + \beta_{Y_1,1} \theta_p + e_{p, Y_1} \\
 Y_{p1} = \beta_{Y_2, 0} + \beta_{Y_2,1} \theta_p + e_{p, Y_2} \\
@@ -392,7 +403,17 @@ Y_{p4} = \beta_{Y_4, 0} + \beta_{Y_4,1} \theta_p + e_{p, Y_4} \\
 Y_{p5} = \beta_{Y_5, 0} + \beta_{Y_5,1} \theta_p + e_{p, Y_5} \\
 \end{array}
 \]</span></p>
-<p>Here:</p>
+</div><div class="column" style="width:50%;">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="mlmmWorkshop2025_Lecture02_Introduction_To_Measurement_Models_files/figure-revealjs/ObsLatent2-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</div></div>
 <div>
 <ul>
 <li><span class="math inline">\(\beta_{Y_i, 0}\)</span> is the intercept of the regression line predicting the score from item <span class="math inline">\(Y_i\)</span>
@@ -492,7 +513,10 @@ Y_{p5} = \beta_{Y_5, 0} + \beta_{Y_5,1} \theta_p + e_{p, Y_5} \\
 <li><span class="math inline">\(\beta_{Y_i,1} = \lambda_i\)</span> is the factor loading for an item</li>
 <li><span class="math inline">\(\sigma^2_{e_{Y_i}} = \psi^2_i\)</span> is the unique variance for an item</li>
 </ul></li>
-<li>We must have a sufficient number of observed variables to empirically identify the latent trait</li>
+<li>Need a sufficient number of observed variables to empirically identify the latent trait
+<ul>
+<li>Three items for identification (and four for testable unidimensionality)</li>
+</ul></li>
 </ul>
 </div>
 </section>
@@ -520,6 +544,34 @@ Y_{p5} = \mu_5 + \lambda_5 \theta_p  + e_{p, Y_5} \\
 <li>Logistic regression: <span class="math display">\[P\left(Y_{p1} = 1\right) = \frac{\exp \left( \beta_{Y_1,0} + \beta_{Y_1,1} \theta_p\right)}{1+\exp \left( \beta_{Y_1,0} + \beta_{Y_1,1} \theta_p\right)}\]</span></li>
 </ul>
 </section>
+<section id="section" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide1.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-1" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide2.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-2" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide3.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-3" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide4.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-4" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide5.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-5" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide6.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-6" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide7.png" class="quarto-figure quarto-figure-center r-stretch"></section>
 <section id="interpreting-model-parameters" class="slide level2">
 <h2>Interpreting Model Parameters</h2>
 <p><span class="math display">\[Logit \left( P\left(Y_{p1} = 1\right) \right) = \beta_{Y_1,0} + \beta_{Y_1,1} \theta_p\]</span></p>
@@ -578,10 +630,14 @@ b_i = -\frac{\mu_i}{\lambda_i}
 \]</span></li>
 </ul>
 </section>
-<section id="more-comparisons" class="slide level2">
-<h2>More Comparisons</h2>
+<section id="section-7" class="slide level2">
+<h2></h2>
 
-<img data-src="img/lesaslide.png" class="r-stretch quarto-figure-center"><p class="caption">Comparing IFA and IRT (Source: Lesa Hoffman)</p></section>
+<img data-src="img/Slide8.png" class="quarto-figure quarto-figure-center r-stretch"></section>
+<section id="section-8" class="slide level2">
+<h2></h2>
+
+<img data-src="img/Slide9.png" class="quarto-figure quarto-figure-center r-stretch"></section>
 <section id="from-ifa-to-irt-1" class="slide level2">
 <h2>From IFA to IRT</h2>
 <ul>

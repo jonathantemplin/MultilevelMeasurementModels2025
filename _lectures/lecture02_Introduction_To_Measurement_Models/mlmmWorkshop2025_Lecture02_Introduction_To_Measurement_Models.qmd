@@ -59,11 +59,11 @@ The same psychometric models apply regardless of the measurement context
   * Item response theory in education
   * Item factor analysis in psychology
 * Many different terms for same ideas, such as the 
-  * Label given to the latent trait: Factor/Ability/Attribute/Construct
+  * Label given to the latent trait: Factor/Ability/Attribute/Construct/Variable/True Score/Theta ($\theta$)
   * Label given to those giving the data: Examinee/Subject/Participant/Respondent/Patient/Student
+  * Label given to the data: Outcome/Indicator/Item/Response
 * What this means:
   * Lots of words to keep track of, but (relatively) few concepts
-  * We will focus on concepts (but have a lot of words)
 
 
 
@@ -78,7 +78,6 @@ The same psychometric models apply regardless of the measurement context
   * <u>No need for exploratory analyses---we define our construct and seek to falsify our definition</u>
 * The term I use for "relates" is "measure"
   * e.g., Educational assessment items measure some type of ability
-
 
 
 ## Guiding Principles
@@ -106,16 +105,17 @@ How does this process differ when we cannot observe the thing we are measuring--
     * Methods for validation
   * We also need to remember that the values we estimate for a person's latent trait(s) won't be perfectly reliable  
     * Caution needed for secondary analyses
-  
 
 
 
 ## Measurement Models
 
-* A distinguishing feature of psychometric models is the second word---they are models
+* Distinguishing feature of psychometric models is the second word---they are models
   * We often call such models "measurement models"
 * Measurement models are <u>the mathematical specification that provides the link between the latent variable(s) and the observed data</u>
 * The form of such models looks different across the wide classes of measurement models (e.g., factor analysis vs. item response models) but wide generalities exist
+  * Continuous Responses? "Confirmatory Factor Analysis"
+  * Categorical responses? "Item Response Theory or Item Factor Analysis"
 * Measurement models need:
   * Distributional assumptions about the data (with link functions)
   * A linear or non-linear form that predicts data from the trait(s)
@@ -123,15 +123,17 @@ How does this process differ when we cannot observe the thing we are measuring--
 
 
 
-## Measurement Models vs. Other Measurement Techniques
+## Models vs. Other Techniques
 
 Measurement models are a different way of thinking about psychometrics than what most people without psychometric training do
 
 * Most scientists enumerate item response scores (e.g., correct response == 1; strongly agree == 5)
-* The latent trait score estimate is then formed by adding the response scores together 
-  * "Add "Stuff" Up" model: Ask Lesa what "stuff" means here...(Scheiße zusammenzählen?)
+* The latent trait score estimate is then formed by summing the response scores 
+  * "Add "Stuff" Up" model: (Scheiße zusammenzählen?)
 * As it turns out, the naïve adding together of item scores implies a measurement model
-  * Called parallel items --- very strict assumptions (equal variances and covariances for all observed variables)
+  * Called parallel items --- very strict assumptions 
+    * Equal variances and covariances for all observed variables
+    * Items measure the trait equally well, with the same amount of error, and no additional relations
 
 
 
@@ -155,8 +157,8 @@ Latent variables can be defined to have different levels of measurement
 
 * For most of this workshop, we will treat latent variables as continuous (interval level)
 * As they do not exist, continuous latent variables need a defined metric:
-  * What is their mean?
-  * What is their standard deviation?
+  * What is their mean? (Usually set to zero)
+  * What is their standard deviation? (Set to one *or* borrowed from metric of items)
 * Defining the metric is the first step in a latent variable model
   * Called scale identification
 * The metric is arbitrary
@@ -257,7 +259,13 @@ $$
 
 ## Interpreting the Parameters
 
+  
 All five regression lines implied by the model are then:
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
 $$
 \begin{array}{c}
 Y_{p1} = \beta_{Y_1, 0} + \beta_{Y_1,1} \theta_p + e_{p, Y_1} \\ 
@@ -268,7 +276,26 @@ Y_{p5} = \beta_{Y_5, 0} + \beta_{Y_5,1} \theta_p + e_{p, Y_5} \\
 \end{array}
 $$
 
-Here:
+:::
+
+::: {.column width="50%"}
+```{r ObsLatent2}
+
+wall(ylim=c(.2,1))
+
+latentVariable = latent(expression(theta), rx= .12, ry=.12, x=.8, y = .6)
+draw(latentVariable)
+obsVariables = list()
+for (var in 1:5){
+  obsVariables[[paste0("Y", var)]] = manifest(paste0("Y", var), x = .2 , y=.9-(var-1)*.15)
+  draw(obsVariables[[paste0("Y", var)]])
+  arrow(from=latentVariable, to = obsVariables[[paste0("Y", var)]], start = "west", end="east")
+}
+
+```
+:::
+
+::::
 
 ::: {.nonincremental} 
 * $\beta_{Y_i, 0}$ is the intercept of the regression line predicting the score from item $Y_i$
@@ -351,7 +378,8 @@ The differences between CFA and regression are:
   * $\beta_{Y_i, 0} = \mu_i$  is the item intercept
   * $\beta_{Y_i,1} = \lambda_i$ is the factor loading for an item
   * $\sigma^2_{e_{Y_i}} = \psi^2_i$ is the unique variance for an item
-* We must have a sufficient number of observed variables to empirically identify the latent trait
+* Need a sufficient number of observed variables to empirically identify the latent trait
+  * Three items for identification (and four for testable unidimensionality)
 ::: 
 
 
@@ -380,6 +408,41 @@ $$
 * If we had observed $\theta_p$ and wanted to predict $Y_{1p} \in \{0,1\}$  what type of analysis would we use?
 * Logistic regression: 
   $$P\left(Y_{p1} = 1\right) = \frac{\exp \left( \beta_{Y_1,0} + \beta_{Y_1,1} \theta_p\right)}{1+\exp \left( \beta_{Y_1,0} + \beta_{Y_1,1} \theta_p\right)}$$  
+
+
+## 
+
+![](img/Slide1.png){fig-align="center"}
+
+
+## 
+
+![](img/Slide2.png){fig-align="center"}
+
+
+## 
+
+![](img/Slide3.png){fig-align="center"}
+
+## 
+
+![](img/Slide4.png){fig-align="center"}
+
+## 
+
+![](img/Slide5.png){fig-align="center"}
+
+
+## 
+
+![](img/Slide6.png){fig-align="center"}
+
+
+## 
+
+![](img/Slide7.png){fig-align="center"}
+
+
 
 
 
@@ -443,9 +506,14 @@ $$
 
 
 
-## More Comparisons
+## 
 
-![Comparing IFA and IRT (Source: Lesa Hoffman)](img/lesaslide.png)
+![](img/Slide8.png){fig-align="center"}
+
+
+## 
+
+![](img/Slide9.png){fig-align="center"}
 
 
 
