@@ -129,8 +129,8 @@ Measurement models are a different way of thinking about psychometrics than what
 
 * Most scientists enumerate item response scores (e.g., correct response == 1; strongly agree == 5)
 * The latent trait score estimate is then formed by summing the response scores 
-  * "Add "Stuff" Up" model: (Scheiße zusammenzählen?)
-* As it turns out, the naïve adding together of item scores implies a measurement model
+  * "Add 'Stuff' Up" model: (Scheiße zusammenzählen?)
+* As it turns out, the naive adding together of item scores implies a measurement model
   * Called parallel items --- very strict assumptions 
     * Equal variances and covariances for all observed variables
     * Items measure the trait equally well, with the same amount of error, and no additional relations
@@ -299,7 +299,7 @@ for (var in 1:5){
 
 ::: {.nonincremental} 
 * $\beta_{Y_i, 0}$ is the intercept of the regression line predicting the score from item $Y_i$
-  * The expected resposne score for a person who has $\theta_p=0$
+  * The expected response score for a person who has $\theta_p=0$
 * $\beta_{Y_i, 1}$ is the slope of the regression line predicting the score from item $Y_i$
   * The expected change in the response score for a one-unit change in $\theta_p$
 :::
