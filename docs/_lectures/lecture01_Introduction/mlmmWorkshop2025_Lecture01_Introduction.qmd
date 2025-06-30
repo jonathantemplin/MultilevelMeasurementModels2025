@@ -13,8 +13,8 @@ editor: source
 
 ## About Your Instructors
 
-- [Lesa Hoffman](https://lesahoffman.com): lesa-hoffman@uiowa.edu
-- [Jonathan Templin](https://jonathantemplin.com): jonathan-templin@uiowa.edu
+- [Lesa Hoffman](https://lesahoffman.com){target="_blank"}: lesa-hoffman@uiowa.edu
+- [Jonathan Templin](https://jonathantemplin.com){target="_blank"}: jonathan-templin@uiowa.edu
 
 ## Workshop Introduction
 This is an ambitious workshop:
@@ -38,7 +38,7 @@ Full set of analysis files in R and Stan
 
 ## Workshop Schedule
 
-* Mornings: 9:00-12:30 (9:00-13:00 Friday)
+* Mornings: 9:00-12:30 (**Including Friday**)
   * Break at 10:45
 * Afternoons:
   * Tuesday: 14:00-17:15 (break at 16:00)
@@ -59,9 +59,8 @@ Your choice:
 ## Syntax and Model Note
 
 * As stan models can take a very long time to run, all prior model results have been saved
-* Model results are in the ```models``` folder
-* The scriptGuide.pdf file contains the details for each model [https://www.dropbox.com/s/wvxqd9vha1u8ov5/%21scriptGuide.pdf?dl=0](https://www.dropbox.com/s/wvxqd9vha1u8ov5/%21scriptGuide.pdf?dl=0)
-* Some slides are written in Quarto (markdown), which can be rendered from the ```slides``` folder
+* All lectures are in self-contained folders 
+* All files are available at [https://github.com/jonathantemplin/MultilevelMeasurementModels2025](https://github.com/jonathantemplin/MultilevelMeasurementModels2025){target="_blank"}
 
 ## Workshop Sections
 
@@ -104,5 +103,10 @@ hist(apply(X=modelingData[paste0("score", 1:10)], MARGIN=2, FUN=mean), xlab = "I
 - Lecture 01: Introduction to Multilevel Measurement Models Workshop
 - Lecture 02: Introduction to Measurement Models
 - Lecture 03: Introduction to Bayesian Statistics
+- Lecture 04: Introduction to MCMC and Stan
+- Lecture 05: Bayesian IRT Models in Stan
+- Lecture 06: Introduction to Multilevel Models
+- Lecture 07: Bayesian Multilevel Models in Stan
+- Lecture 08: Bayesian Multilevel Measurement Models in Stan
 
 

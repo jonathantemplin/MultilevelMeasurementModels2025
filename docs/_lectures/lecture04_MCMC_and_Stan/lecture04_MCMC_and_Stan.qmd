@@ -317,7 +317,17 @@ Questions:
 - You then run the program to estimate your model
   - If you use R, the interface can be seamless
 
+## Why Stan?
 
+- Stan is open source and free
+- Stan is a general-purpose MCMC estimation program
+  - Can be used for many different types of models
+- Coding in Stan requires you to understand your model completely 
+  - This is a good thing, as it forces you to think about your model
+- You control:
+  - The model parameterization
+  - The choices of prior distributions
+  
 
 
 ## Stan and RStudio
