@@ -4,7 +4,7 @@ Multilevel Measurement Models Workshop (Summer 2025)
 
 This repository contains all lecture materials for the Summer 2025 Multilevel Measurement Models Workshop held at the Universität Mannheim.
 
-For easier navigation, please consult the workshop webpage at [https://jonathantemplin.github.io/MultilevelMeasurementModels2025/](https://jonathantemplin.github.io/MultilevelMeasurementModels2025/){target="_blank"}\
+For easier navigation, please consult the workshop webpage at <https://jonathantemplin.github.io/MultilevelMeasurementModels2025/>\
 
 ## Folder Structure
 
