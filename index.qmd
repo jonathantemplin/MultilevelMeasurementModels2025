@@ -24,7 +24,7 @@ Prerequisite knowledge and skills include: (1) familiarity with R software for d
 
 Main GitHub Repository: [https://github.com/jonathantemplin/MultilevelMeasurementModels2025](https://github.com/jonathantemplin/MultilevelMeasurementModels2025){target="_blank"}
 
-YouTube Lecture Video Playlist: <https://www.youtube.com/playlist?list=PLSmMs4UgmSMh9XHTyzCMtXrYQ2YQqVJfQ>
+YouTube Lecture Video Playlist: Unfortunately, many videos had encoding errors, rendering them useless. We point you to the 2023 version of the workshop for YouTube: <https://youtu.be/iDEsMt0CBo0?si=xsYtuy5gdvn_lwzZ>
 
 +----------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Lecture                                      | Lecture Files                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
